@@ -1,0 +1,29 @@
+# ---- 本地工具生成物 / 索引 ----
+.codegraph/
+.codeartsdoer/
+
+# ---- IDE / 编辑器 ----
+.idea/
+.vscode/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# ---- Node ----
+node_modules/
+dist/
+*.local
+
+# ---- 配置与密钥 ----
+.env
+.env.*
+!.env.example
+*.pem
+
+# ---- 系统 ----
+.DS_Store
+Thumbs.db
