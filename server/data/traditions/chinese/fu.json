@@ -1,0 +1,74 @@
+{
+  "abbr": "fu",
+  "name": "辅(附官)",
+  "latin": "Assistant (Vassal of Northern Dipper)",
+  "glyph": "",
+  "season": "",
+  "caption": "",
+  "viewBox": {
+    "width": 700,
+    "height": 700
+  },
+  "center": {
+    "ra": 206.7781,
+    "dec": 54.281
+  },
+  "stars": {
+    "66738": {
+      "bayer": "",
+      "name": "辅增一",
+      "name_zh": "辅增一",
+      "magnitude": 4.63,
+      "ra": 205.1845,
+      "dec": 54.6816,
+      "label": true,
+      "hip": "66738",
+      "x": 90.8,
+      "y": 236.4
+    },
+    "67231": {
+      "bayer": "",
+      "name": "辅增二",
+      "name_zh": "辅增二",
+      "magnitude": 5.68,
+      "ra": 206.6486,
+      "dec": 54.4327,
+      "label": true,
+      "hip": "67231",
+      "x": 328.8,
+      "y": 309.4
+    },
+    "67848": {
+      "bayer": "",
+      "name": "辅增三",
+      "name_zh": "辅增三",
+      "magnitude": 5.7,
+      "ra": 208.4626,
+      "dec": 53.7287,
+      "label": true,
+      "hip": "67848",
+      "x": 630.4,
+      "y": 504.2
+    }
+  },
+  "lines": [],
+  "mansion": null,
+  "asterism_id": null,
+  "stories": {
+    "myth": {
+      "title": "辅：北斗之侧默默襄助之星",
+      "paragraphs": [
+        "辅星乃北斗之旁一颗暗星，专辅北斗星君，传述星命。",
+        "古人称\"辅弼\"——辅星与弼星乃帝王身侧两大辅佐。\"辅\"近北斗第七星（摇光 / η UMa），古人以其佐北斗\"建四时、均五行\"。",
+        "辅星不甚亮，以其专做幕后之事。星明则朝有贤辅，暗则国失良臣。"
+      ]
+    },
+    "science": {
+      "title": "辅位置",
+      "paragraphs": [
+        "辅位于赤经约 206°、赤纬约 +54°，处大熊座（Ursa Major）附近，接近北斗柄末端（η UMa）。",
+        "单星，约 5 等。"
+      ]
+    }
+  }
+}

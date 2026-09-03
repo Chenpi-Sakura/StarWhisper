@@ -1,0 +1,163 @@
+{
+  "abbr": "umi",
+  "name": "小熊座",
+  "name_zh": "小熊座",
+  "name_en": "Little Dipper",
+  "latin": "Ursa Minor",
+  "glyph": "",
+  "season": "summer",
+  "caption": "",
+  "viewBox": {
+    "width": 700,
+    "height": 700
+  },
+  "center": {
+    "ra": 234.427,
+    "dec": 80.706
+  },
+  "stars": {
+    "HIP_77055": {
+      "bayer": "ζ",
+      "name": "勾陈四",
+      "name_zh": "勾陈四",
+      "name_en": "Akfa Farkadain",
+      "magnitude": 4.29,
+      "ra": 236.0147,
+      "dec": 77.7945,
+      "label": true,
+      "hip": "77055",
+      "x": 360.7,
+      "y": 442.8
+    },
+    "HIP_79822": {
+      "bayer": "η",
+      "name": "勾陈增九",
+      "name_zh": "勾陈增九",
+      "name_en": "Anwa Farkadain",
+      "magnitude": 4.95,
+      "ra": 244.37619999999998,
+      "dec": 75.7553,
+      "label": true,
+      "hip": "79822",
+      "x": 427.9,
+      "y": 501.4
+    },
+    "HIP_75097": {
+      "bayer": "γ",
+      "name": "太子",
+      "name_zh": "太子",
+      "name_en": "Pherkad",
+      "magnitude": 3.0,
+      "ra": 230.1821,
+      "dec": 71.834,
+      "label": true,
+      "hip": "75097",
+      "x": 307.5,
+      "y": 632.2
+    },
+    "HIP_72607": {
+      "bayer": "β",
+      "name": "北极二 帝",
+      "name_zh": "北极二 帝",
+      "name_en": "Kochab",
+      "magnitude": 2.07,
+      "ra": 222.6764,
+      "dec": 74.1555,
+      "label": true,
+      "hip": "72607",
+      "x": 248.0,
+      "y": 549.0
+    },
+    "HIP_82080": {
+      "bayer": "ε",
+      "name": "勾陈三",
+      "name_zh": "勾陈三",
+      "name_en": "Circitores",
+      "magnitude": 4.21,
+      "ra": 251.4927,
+      "dec": 82.0373,
+      "label": true,
+      "hip": "82080",
+      "x": 424.4,
+      "y": 296.5
+    },
+    "HIP_85822": {
+      "bayer": "δ",
+      "name": "勾陈二",
+      "name_zh": "勾陈二",
+      "name_en": "Yildun",
+      "magnitude": 4.35,
+      "ra": 263.0542,
+      "dec": 86.5865,
+      "label": true,
+      "hip": "85822",
+      "x": 402.3,
+      "y": 148.9
+    },
+    "HIP_11767": {
+      "bayer": "α",
+      "name": "勾陈一",
+      "name_zh": "勾陈一",
+      "name_en": "Polaris",
+      "magnitude": 1.97,
+      "ra": 37.9545,
+      "dec": 89.2641,
+      "label": true,
+      "hip": "11767",
+      "x": 356.7,
+      "y": 30.1
+    }
+  },
+  "lines": [
+    [
+      "HIP_77055",
+      "HIP_79822"
+    ],
+    [
+      "HIP_79822",
+      "HIP_75097"
+    ],
+    [
+      "HIP_75097",
+      "HIP_72607"
+    ],
+    [
+      "HIP_72607",
+      "HIP_77055"
+    ],
+    [
+      "HIP_77055",
+      "HIP_82080"
+    ],
+    [
+      "HIP_82080",
+      "HIP_85822"
+    ],
+    [
+      "HIP_85822",
+      "HIP_11767"
+    ]
+  ],
+  "mansion": null,
+  "asterism_id": null,
+  "stories": {
+    "myth": {
+      "title": "小熊座：北极恒指之子",
+      "paragraphs": [
+        "北天极畔，小熊座拱卫其右，七星罗列如勺，勺柄指向北极星 Polaris（勾陈一）。其一星不动，万星皆绕之而转。",
+        "神话所载，此熊乃大熊卡利斯托之子阿尔卡斯（Arcas）所化。少年成长于山林，不知其母已成巨熊。一日入林猎熊，几欲弑之。",
+        "宙斯于千钧之际，将母子双双升天，遂成大熊、小熊二座。又有传，此熊原为克里特岛之 nymph Ida，与其忠犬共嬉于林间，众神皆化之以星。",
+        "后世航海者据此星辨方位，旅人据此星知归途。万千星辰皆动，唯此一星恒定，如同大道，不随世变。"
+      ]
+    },
+    "science": {
+      "title": "小熊座 · 天文参数",
+      "paragraphs": [
+        "小熊座（Ursa Minor）。赤经约 0h-24h，赤纬约 +65°- +90°。面积 256 平方度。",
+        "主星：α UMi（Polaris 勾陈一，当前北极星，三合星系统）、β UMi（Kochab 北极二，橙巨星）、γ UMi（Pherkad 太子）。",
+        "深空天体：本座深空天体较少，NGC 6217 为一棒旋星系，余者皆暗淡。",
+        "最佳观测月份：6 月 - 8 月（北半球）。"
+      ]
+    }
+  }
+}

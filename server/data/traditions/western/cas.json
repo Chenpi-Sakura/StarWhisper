@@ -1,0 +1,125 @@
+{
+  "abbr": "cas",
+  "name": "仙后座",
+  "name_zh": "仙后座",
+  "name_en": "Cassiopeia",
+  "latin": "Cassiopeia",
+  "glyph": "",
+  "season": "winter",
+  "caption": "",
+  "viewBox": {
+    "width": 700,
+    "height": 700
+  },
+  "center": {
+    "ra": 14.8474,
+    "dec": 60.3626
+  },
+  "stars": {
+    "HIP_8886": {
+      "bayer": "ε",
+      "name": "阁道二",
+      "name_zh": "阁道二",
+      "name_en": "Segin",
+      "magnitude": 3.35,
+      "ra": 28.5989,
+      "dec": 63.6701,
+      "label": true,
+      "hip": "8886",
+      "x": 618.1,
+      "y": 175.2
+    },
+    "HIP_6686": {
+      "bayer": "δ",
+      "name": "阁道三",
+      "name_zh": "阁道三",
+      "name_en": "Ruchbah",
+      "magnitude": 2.66,
+      "ra": 21.454,
+      "dec": 60.2353,
+      "label": true,
+      "hip": "6686",
+      "x": 494.8,
+      "y": 348.4
+    },
+    "HIP_4427": {
+      "bayer": "γ",
+      "name": "策",
+      "name_zh": "策",
+      "name_en": "Navi",
+      "magnitude": 2.15,
+      "ra": 14.1772,
+      "dec": 60.7167,
+      "label": true,
+      "hip": "4427",
+      "x": 335.5,
+      "y": 334.3
+    },
+    "HIP_3179": {
+      "bayer": "α",
+      "name": "王良四",
+      "name_zh": "王良四",
+      "name_en": "Shedar",
+      "magnitude": 2.24,
+      "ra": 10.1268,
+      "dec": 56.5373,
+      "label": true,
+      "hip": "3179",
+      "x": 234.9,
+      "y": 515.1
+    },
+    "HIP_746": {
+      "bayer": "β",
+      "name": "王良一",
+      "name_zh": "王良一",
+      "name_en": "Caph",
+      "magnitude": 2.28,
+      "ra": 2.2945,
+      "dec": 59.1498,
+      "label": true,
+      "hip": "746",
+      "x": 66.9,
+      "y": 376.7
+    }
+  },
+  "lines": [
+    [
+      "HIP_8886",
+      "HIP_6686"
+    ],
+    [
+      "HIP_6686",
+      "HIP_4427"
+    ],
+    [
+      "HIP_4427",
+      "HIP_3179"
+    ],
+    [
+      "HIP_3179",
+      "HIP_746"
+    ]
+  ],
+  "mansion": null,
+  "asterism_id": null,
+  "stories": {
+    "myth": {
+      "title": "仙后座：傲慢王后的天上宝座",
+      "paragraphs": [
+        "秋夜北天，仙后座贴极而立，五星排成「W」形（或「M」形），绕北极旋转，永不沉落。主星 α Cas（王良四，Schedar）2.24 等，光辉橘黄。",
+        "希腊神话载，埃塞俄比亚王后卡西奥佩娅（Cassiopeia）自负容颜绝世，竟自夸其女安德洛墨达之美胜过海中仙女。此言触怒海神波塞冬，遂遣海怪鲸鱼（Cetus）作乱。",
+        "卡西奥佩娅失女之痛方醒悟，但为时已晚。幸英雄珀尔修斯斩蛇发女妖归来，途经其国，以海怪献祭，方救下公主。卡西奥佩娅与夫仙王座（Cepheus）共升天际，化为 W 形——有时倒悬如受刑之姿。",
+        "后世仰望 W 星，知王后永悬北天，半载正坐，半载倒悬——此乃傲慢者之刑，亦为母爱者之镜。"
+      ]
+    },
+    "science": {
+      "title": "仙后座 · 天文参数",
+      "paragraphs": [
+        "仙后座（Cassiopeia）。赤经 0h54m，赤纬 +60°43′。面积 598 平方度。",
+        "主星：α Cas（王良四，Schedar，2.24，橘巨星）、β Cas（王良一，Caph，2.28，变星）、γ Cas（策，Navi，2.15，蓝白变星）、δ Cas（阁道三，Ruchbah，2.66，食双星）、ε Cas（阁道二，Segin，3.35）。",
+        "深空天体：M52（开放星团）、M103（小型开放星团）、NGC 457（猫头鹰星团）。",
+        "最佳观测月份：9 月 - 11 月。"
+      ]
+    }
+  }
+}

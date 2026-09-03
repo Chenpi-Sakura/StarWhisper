@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "solved": true,
+  "ra": 92.93,
+  "dec": -2.81,
+  "pixel_scale": 23.90,
+  "rotation": 283.66,
+  "field_width": 39.94,
+  "field_height": 26.66,
+  "solve_time": 16.5,
+  "image_width": 6016,
+  "image_height": 4016,
+  "exif_orientation": 1,
+  "constellations": [
+    {
+      "abbr": "ori",
+      "name": "猎户座",
+      "latin": "Orion",
+      "confidence": 0.875,
+      "hit_stars": 7,
+      "total_bright_stars": 8
+    }
+  ],
+  "stars_overlay": [
+    {"bayer": "Alpha Ori",   "name": "参宿四", "magnitude": 0.42, "pixel_x": 1353, "pixel_y": 541,  "constellation": "ori"},
+    {"bayer": "Gamma Ori",   "name": "参宿五", "magnitude": 1.64, "pixel_x": 3098, "pixel_y": 681,  "constellation": "ori"},
+    {"bayer": "Lambda Ori",  "name": "觜宿一", "magnitude": 3.39, "pixel_x": 2648, "pixel_y": 244,  "constellation": "ori"},
+    {"bayer": "Zeta Ori",    "name": "参宿一", "magnitude": 1.74, "pixel_x": 2441, "pixel_y": 1292, "constellation": "ori"},
+    {"bayer": "Epsilon Ori", "name": "参宿二", "magnitude": 1.69, "pixel_x": 2629, "pixel_y": 1379, "constellation": "ori"},
+    {"bayer": "Delta Ori",   "name": "参宿三", "magnitude": 2.23, "pixel_x": 2817, "pixel_y": 1466, "constellation": "ori"},
+    {"bayer": "Kappa Ori",   "name": "参宿六", "magnitude": 2.06, "pixel_x": 2141, "pixel_y": 2147, "constellation": "ori"},
+    {"bayer": "Beta Ori",    "name": "参宿七", "magnitude": 0.13, "pixel_x": 3137, "pixel_y": 2077, "constellation": "ori"}
+  ],
+  "overlay_lines": [
+    ["Alpha Ori",   "Gamma Ori"],
+    ["Alpha Ori",   "Lambda Ori"],
+    ["Lambda Ori",  "Gamma Ori"],
+    ["Alpha Ori",   "Zeta Ori"],
+    ["Gamma Ori",   "Delta Ori"],
+    ["Delta Ori",   "Epsilon Ori"],
+    ["Epsilon Ori", "Zeta Ori"],
+    ["Delta Ori",   "Beta Ori"],
+    ["Zeta Ori",    "Kappa Ori"],
+    ["Beta Ori",    "Kappa Ori"]
+  ]
+}

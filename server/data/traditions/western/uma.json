@@ -1,0 +1,401 @@
+{
+  "abbr": "uma",
+  "name": "大熊座",
+  "name_zh": "大熊座",
+  "name_en": "Big Dipper",
+  "latin": "Ursa Maior",
+  "glyph": "",
+  "season": "spring",
+  "caption": "",
+  "viewBox": {
+    "width": 700,
+    "height": 700
+  },
+  "center": {
+    "ra": 164.4266,
+    "dec": 52.5114
+  },
+  "stars": {
+    "HIP_59774": {
+      "bayer": "δ",
+      "name": "天权",
+      "name_zh": "天权",
+      "name_en": "Megrez",
+      "magnitude": 3.32,
+      "ra": 183.8565,
+      "dec": 57.0326,
+      "label": true,
+      "hip": "59774",
+      "x": 474.0,
+      "y": 279.1
+    },
+    "HIP_62956": {
+      "bayer": "ε",
+      "name": "玉衡",
+      "name_zh": "玉衡",
+      "name_en": "Alioth",
+      "magnitude": 1.76,
+      "ra": 193.5073,
+      "dec": 55.9598,
+      "label": true,
+      "hip": "62956",
+      "x": 538.6,
+      "y": 269.5
+    },
+    "HIP_65378": {
+      "bayer": "ζ",
+      "name": "开阳",
+      "name_zh": "开阳",
+      "name_en": "Mizar",
+      "magnitude": 2.23,
+      "ra": 200.9814,
+      "dec": 54.9254,
+      "label": true,
+      "hip": "65378",
+      "x": 590.3,
+      "y": 257.4
+    },
+    "HIP_67301": {
+      "bayer": "η",
+      "name": "摇光",
+      "name_zh": "摇光",
+      "name_en": "Alkaid",
+      "magnitude": 1.85,
+      "ra": 206.8852,
+      "dec": 49.3133,
+      "label": true,
+      "hip": "67301",
+      "x": 664.9,
+      "y": 292.9
+    },
+    "HIP_58225": {
+      "bayer": "",
+      "name": "HIP 58225",
+      "name_zh": "",
+      "name_en": "",
+      "magnitude": 7.47,
+      "ra": 179.1259,
+      "dec": 57.8716,
+      "label": true,
+      "hip": "58225",
+      "x": 442.1,
+      "y": 276.8
+    },
+    "HIP_54061": {
+      "bayer": "α",
+      "name": "天枢",
+      "name_zh": "天枢",
+      "name_en": "Dubhe",
+      "magnitude": 1.81,
+      "ra": 165.932,
+      "dec": 61.751,
+      "label": true,
+      "hip": "54061",
+      "x": 358.5,
+      "y": 240.4
+    },
+    "HIP_46733": {
+      "bayer": "h",
+      "name": "内阶四",
+      "name_zh": "内阶四",
+      "name_en": "",
+      "magnitude": 3.65,
+      "ra": 142.8821,
+      "dec": 63.0619,
+      "label": true,
+      "hip": "46733",
+      "x": 235.2,
+      "y": 206.3
+    },
+    "HIP_41704": {
+      "bayer": "ο",
+      "name": "内阶一",
+      "name_zh": "内阶一",
+      "name_en": "Muscida",
+      "magnitude": 3.35,
+      "ra": 127.5661,
+      "dec": 60.7182,
+      "label": true,
+      "hip": "41704",
+      "x": 144.0,
+      "y": 195.3
+    },
+    "HIP_48319": {
+      "bayer": "υ",
+      "name": "文昌二",
+      "name_zh": "文昌二",
+      "name_en": "",
+      "magnitude": 3.78,
+      "ra": 147.7473,
+      "dec": 59.0387,
+      "label": true,
+      "hip": "48319",
+      "x": 248.9,
+      "y": 260.4
+    },
+    "HIP_53910": {
+      "bayer": "β",
+      "name": "天璇",
+      "name_zh": "天璇",
+      "name_en": "Merak",
+      "magnitude": 2.34,
+      "ra": 165.4603,
+      "dec": 56.3824,
+      "label": true,
+      "hip": "53910",
+      "x": 356.8,
+      "y": 304.1
+    },
+    "HIP_48402": {
+      "bayer": "φ",
+      "name": "文昌三",
+      "name_zh": "文昌三",
+      "name_en": "",
+      "magnitude": 4.55,
+      "ra": 148.0265,
+      "dec": 54.0643,
+      "label": true,
+      "hip": "48402",
+      "x": 236.9,
+      "y": 318.6
+    },
+    "HIP_46853": {
+      "bayer": "θ",
+      "name": "文昌四",
+      "name_zh": "文昌四",
+      "name_en": "",
+      "magnitude": 3.17,
+      "ra": 143.2143,
+      "dec": 51.6773,
+      "label": true,
+      "hip": "46853",
+      "x": 196.0,
+      "y": 337.1
+    },
+    "HIP_44127": {
+      "bayer": "ι",
+      "name": "上台一",
+      "name_zh": "上台一",
+      "name_en": "Talitha",
+      "magnitude": 3.12,
+      "ra": 134.8019,
+      "dec": 48.0418,
+      "label": true,
+      "hip": "44127",
+      "x": 119.6,
+      "y": 356.0
+    },
+    "HIP_44471": {
+      "bayer": "κ",
+      "name": "上台二",
+      "name_zh": "上台二",
+      "name_en": "Alkaphrah",
+      "magnitude": 3.57,
+      "ra": 135.9064,
+      "dec": 47.1565,
+      "label": true,
+      "hip": "44471",
+      "x": 123.8,
+      "y": 369.4
+    },
+    "HIP_54539": {
+      "bayer": "ψ",
+      "name": "太尊",
+      "name_zh": "太尊",
+      "name_en": "",
+      "magnitude": 3.0,
+      "ra": 167.4159,
+      "dec": 44.4985,
+      "label": true,
+      "hip": "54539",
+      "x": 375.3,
+      "y": 444.4
+    },
+    "HIP_50372": {
+      "bayer": "λ",
+      "name": "中台一",
+      "name_zh": "中台一",
+      "name_en": "Tania Borealis",
+      "magnitude": 3.45,
+      "ra": 154.2741,
+      "dec": 42.9144,
+      "label": true,
+      "hip": "50372",
+      "x": 261.6,
+      "y": 457.9
+    },
+    "HIP_57399": {
+      "bayer": "χ",
+      "name": "太阳守",
+      "name_zh": "太阳守",
+      "name_en": "Taiyangshou",
+      "magnitude": 3.69,
+      "ra": 176.5126,
+      "dec": 47.7794,
+      "label": true,
+      "hip": "57399",
+      "x": 445.9,
+      "y": 398.2
+    },
+    "HIP_50801": {
+      "bayer": "μ",
+      "name": "中台二",
+      "name_zh": "中台二",
+      "name_en": "Tania Australis",
+      "magnitude": 3.06,
+      "ra": 155.5823,
+      "dec": 41.4995,
+      "label": true,
+      "hip": "50801",
+      "x": 271.0,
+      "y": 476.2
+    },
+    "HIP_58001": {
+      "bayer": "γ",
+      "name": "天玑",
+      "name_zh": "天玑",
+      "name_en": "Phecda",
+      "magnitude": 2.41,
+      "ra": 178.4577,
+      "dec": 53.6948,
+      "label": true,
+      "hip": "58001",
+      "x": 447.8,
+      "y": 326.4
+    },
+    "HIP_55219": {
+      "bayer": "ν",
+      "name": "下台一",
+      "name_zh": "下台一",
+      "name_en": "Alula Borealis",
+      "magnitude": 3.49,
+      "ra": 169.6197,
+      "dec": 33.0943,
+      "label": true,
+      "hip": "55219",
+      "x": 402.9,
+      "y": 580.2
+    },
+    "HIP_55203": {
+      "bayer": "ξ",
+      "name": "下台二",
+      "name_zh": "下台二",
+      "name_en": "Alula Australis",
+      "magnitude": 3.79,
+      "ra": 169.5468,
+      "dec": 31.5308,
+      "label": true,
+      "hip": "55203",
+      "x": 403.4,
+      "y": 599.3
+    }
+  },
+  "lines": [
+    [
+      "HIP_59774",
+      "HIP_62956"
+    ],
+    [
+      "HIP_62956",
+      "HIP_65378"
+    ],
+    [
+      "HIP_65378",
+      "HIP_67301"
+    ],
+    [
+      "HIP_59774",
+      "HIP_58225"
+    ],
+    [
+      "HIP_54061",
+      "HIP_46733"
+    ],
+    [
+      "HIP_46733",
+      "HIP_41704"
+    ],
+    [
+      "HIP_41704",
+      "HIP_48319"
+    ],
+    [
+      "HIP_48319",
+      "HIP_53910"
+    ],
+    [
+      "HIP_53910",
+      "HIP_48402"
+    ],
+    [
+      "HIP_48402",
+      "HIP_46853"
+    ],
+    [
+      "HIP_46853",
+      "HIP_44127"
+    ],
+    [
+      "HIP_44471",
+      "HIP_46853"
+    ],
+    [
+      "HIP_54539",
+      "HIP_50372"
+    ],
+    [
+      "HIP_57399",
+      "HIP_54539"
+    ],
+    [
+      "HIP_54539",
+      "HIP_50801"
+    ],
+    [
+      "HIP_58001",
+      "HIP_57399"
+    ],
+    [
+      "HIP_57399",
+      "HIP_55219"
+    ],
+    [
+      "HIP_55219",
+      "HIP_55203"
+    ],
+    [
+      "HIP_58225",
+      "HIP_54061"
+    ],
+    [
+      "HIP_54061",
+      "HIP_53910"
+    ],
+    [
+      "HIP_53910",
+      "HIP_58001"
+    ]
+  ],
+  "mansion": null,
+  "asterism_id": null,
+  "stories": {
+    "myth": {
+      "title": "大熊座：永转天穹之影",
+      "paragraphs": [
+        "北天苍茫，大熊座环天极而转。其七曜「北斗七星」列于背脊，由天枢至摇光，光辉相贯，勺柄指北，最为天下所识。",
+        "希腊神话载，阿卡迪亚有少女卡利斯托（Callisto），美艳动人，为月亮女神阿尔忒弥斯之伴。后与宙斯生下一子阿尔卡斯。赫拉闻而大怒，怒其失贞，化为巨熊。",
+        "多年后，阿尔卡斯成人，入林猎熊，险些弑母。宙斯于千钧一发之际，将母子双双升入天幕，遂成大熊、小熊二座。",
+        "天后赫拉仍不解恨，求海神波塞冬不许其入海，使二熊永居北极之上，不入地平。后世仰望者皆见巨熊绕极而转，永指北辰。"
+      ]
+    },
+    "science": {
+      "title": "大熊座 · 天文参数",
+      "paragraphs": [
+        "大熊座（Ursa Maior）。赤经约 10h-14h，赤纬约 +50°- +65°。面积 1280 平方度，为全天第三大星座。",
+        "主星：α UMa（Dubhe 天枢，橙巨星）、β UMa（Merak 天璇）、γ UMa（Phecda 天玑）、δ UMa（Megrez 天权）、ε UMa（Alioth 玉衡）、ζ UMa（Mizar 开阳，著名双星）、η UMa（Alkaid 摇光）。",
+        "深空天体：M81（波德星系）、M82（雪茄星系）、M101（风车星系）、M51（漩涡星系）。",
+        "最佳观测月份：3 月 - 6 月。"
+      ]
+    }
+  }
+}

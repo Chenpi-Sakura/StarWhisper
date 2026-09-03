@@ -1,6 +1,7 @@
 # ---- 本地工具生成物 / 索引 ----
 .codegraph/
 .codeartsdoer/
+.superpowers/
 
 # ---- IDE / 编辑器 ----
 .idea/
@@ -12,11 +13,14 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+.pytest_cache
 
 # ---- Node ----
 node_modules/
 dist/
 *.local
+# Vite 缓存（web/.vite/deps 自动生成的依赖预构建产物）
+web/.vite/
 
 # ---- 配置与密钥 ----
 .env
@@ -27,3 +31,5 @@ dist/
 # ---- 系统 ----
 .DS_Store
 Thumbs.db
+# ---- WorkBuddy 本地数据 ----
+.workbuddy/

@@ -1,0 +1,197 @@
+{
+  "abbr": "leo",
+  "name": "狮子座",
+  "name_zh": "狮子座",
+  "name_en": "Lion",
+  "latin": "Leo",
+  "glyph": "♌",
+  "season": "spring",
+  "caption": "春夜兽王。镰刀当胸, 五帝座一为尾。",
+  "viewBox": {
+    "width": 700,
+    "height": 700
+  },
+  "center": {
+    "ra": 158.1154,
+    "dec": 19.4244
+  },
+  "stars": {
+    "HIP_50583": {
+      "bayer": "γ1",
+      "name": "轩辕十二",
+      "name_zh": "轩辕十二",
+      "name_en": "Algieba",
+      "magnitude": 2.01,
+      "ra": 154.9931,
+      "dec": 19.8415,
+      "label": true,
+      "hip": "50583",
+      "x": 300.8,
+      "y": 342.6
+    },
+    "HIP_50335": {
+      "bayer": "ζ",
+      "name": "轩辕十一",
+      "name_zh": "轩辕十一",
+      "name_en": "Adhafera",
+      "magnitude": 3.43,
+      "ra": 154.1726,
+      "dec": 23.4173,
+      "label": true,
+      "hip": "50335",
+      "x": 289.3,
+      "y": 282.3
+    },
+    "HIP_48455": {
+      "bayer": "μ",
+      "name": "轩辕十",
+      "name_zh": "轩辕十",
+      "name_en": "Rasalas",
+      "magnitude": 3.88,
+      "ra": 148.1909,
+      "dec": 26.007,
+      "label": true,
+      "hip": "48455",
+      "x": 199.9,
+      "y": 234.6
+    },
+    "HIP_47908": {
+      "bayer": "ε",
+      "name": "轩辕九",
+      "name_zh": "轩辕九",
+      "name_en": "Algenubi",
+      "magnitude": 2.97,
+      "ra": 146.4628,
+      "dec": 23.7743,
+      "label": true,
+      "hip": "47908",
+      "x": 170.8,
+      "y": 270.4
+    },
+    "HIP_49669": {
+      "bayer": "α",
+      "name": "轩辕十四",
+      "name_zh": "轩辕十四",
+      "name_en": "Regulus",
+      "magnitude": 1.36,
+      "ra": 152.093,
+      "dec": 11.9672,
+      "label": true,
+      "hip": "49669",
+      "x": 250.8,
+      "y": 473.7
+    },
+    "HIP_49583": {
+      "bayer": "η",
+      "name": "轩辕十三",
+      "name_zh": "轩辕十三",
+      "name_en": "Al Jabhah",
+      "magnitude": 3.48,
+      "ra": 151.8331,
+      "dec": 16.7627,
+      "label": true,
+      "hip": "49583",
+      "x": 249.1,
+      "y": 392.9
+    },
+    "HIP_54872": {
+      "bayer": "δ",
+      "name": "西上相",
+      "name_zh": "西上相",
+      "name_en": "Zosma",
+      "magnitude": 2.56,
+      "ra": 168.5271,
+      "dec": 20.5237,
+      "label": true,
+      "hip": "54872",
+      "x": 513.6,
+      "y": 326.5
+    },
+    "HIP_57632": {
+      "bayer": "β",
+      "name": "五帝座一",
+      "name_zh": "五帝座一",
+      "name_en": "Denebola",
+      "magnitude": 2.14,
+      "ra": 177.2649,
+      "dec": 14.5721,
+      "label": true,
+      "hip": "57632",
+      "x": 663.1,
+      "y": 415.9
+    },
+    "HIP_54879": {
+      "bayer": "θ",
+      "name": "西次相",
+      "name_zh": "西次相",
+      "name_en": "Chertan",
+      "magnitude": 3.33,
+      "ra": 168.56,
+      "dec": 15.4296,
+      "label": true,
+      "hip": "54879",
+      "x": 519.2,
+      "y": 412.3
+    }
+  },
+  "lines": [
+    [
+      "HIP_50583",
+      "HIP_50335"
+    ],
+    [
+      "HIP_50335",
+      "HIP_48455"
+    ],
+    [
+      "HIP_48455",
+      "HIP_47908"
+    ],
+    [
+      "HIP_49669",
+      "HIP_49583"
+    ],
+    [
+      "HIP_49583",
+      "HIP_50583"
+    ],
+    [
+      "HIP_50583",
+      "HIP_54872"
+    ],
+    [
+      "HIP_54872",
+      "HIP_57632"
+    ],
+    [
+      "HIP_57632",
+      "HIP_54879"
+    ],
+    [
+      "HIP_54879",
+      "HIP_49669"
+    ]
+  ],
+  "mansion": null,
+  "asterism_id": null,
+  "stories": {
+    "myth": {
+      "title": "狮子座：王者归来之颂",
+      "paragraphs": [
+        "春夜东升，狮子座雄踞于黄道之侧。主星 Regulus（α Leo）位居其心，光辉冷冽，古人称之为\"王者之心\"。",
+        "希腊神话载，尼米亚山谷有一巨狮，皮毛刀枪不入，撕裂无数英雄。宙斯之子赫拉克勒斯受命擒之，乃以双手扼其喉，窒息而亡。此乃赫拉克勒斯十二功业之第一功。",
+        "众神嘉其勇，乃升巨狮为天上星座。其鬃毛化作春夜之镰刀——反写问号之形，自轩辕以降，皆列于天。",
+        "后世王者每于春分观此星，以 Regulus 验己之心，知王者之气，源于凛然不惧。"
+      ]
+    },
+    "science": {
+      "title": "狮子座 · 天文参数",
+      "paragraphs": [
+        "狮子座（Leo）。赤经 10h40m，赤纬 +16°。面积 947 平方度。",
+        "主星：α Leo（Regulus，蓝白主序星）、β Leo（Denebola）、γ Leo（Algieba，著名双星）。",
+        "深空天体：M65、M66、NGC 3623（狮子三重星系）。",
+        "最佳观测月份：3 月 - 5 月。"
+      ]
+    }
+  }
+}

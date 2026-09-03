@@ -1,0 +1,193 @@
+{
+  "abbr": "gru",
+  "name": "天鹤座",
+  "name_zh": "天鹤座",
+  "name_en": "Crane",
+  "latin": "Grus",
+  "glyph": "",
+  "season": "winter",
+  "caption": "",
+  "viewBox": {
+    "width": 700,
+    "height": 700
+  },
+  "center": {
+    "ra": 336.4434,
+    "dec": -45.3854
+  },
+  "stars": {
+    "HIP_110997": {
+      "bayer": "δ1",
+      "name": "鹤增二",
+      "name_zh": "鹤增二",
+      "name_en": "",
+      "magnitude": 3.97,
+      "ra": 337.3174,
+      "dec": -43.4956,
+      "label": true,
+      "hip": "110997",
+      "x": 370.3,
+      "y": 289.7
+    },
+    "HIP_109908": {
+      "bayer": "μ1",
+      "name": "鹤十二",
+      "name_zh": "鹤十二",
+      "name_en": "",
+      "magnitude": 4.79,
+      "ra": 333.9038,
+      "dec": -41.3467,
+      "label": true,
+      "hip": "109908",
+      "x": 289.0,
+      "y": 221.8
+    },
+    "HIP_109111": {
+      "bayer": "λ",
+      "name": "败臼二",
+      "name_zh": "败臼二",
+      "name_en": "",
+      "magnitude": 4.47,
+      "ra": 331.5287,
+      "dec": -39.5434,
+      "label": true,
+      "hip": "109111",
+      "x": 228.6,
+      "y": 166.7
+    },
+    "HIP_108085": {
+      "bayer": "γ",
+      "name": "败臼一",
+      "name_zh": "败臼一",
+      "name_en": "Aldhanab",
+      "magnitude": 3.0,
+      "ra": 328.4822,
+      "dec": -37.3649,
+      "label": true,
+      "hip": "108085",
+      "x": 146.9,
+      "y": 102.7
+    },
+    "HIP_113638": {
+      "bayer": "ζ",
+      "name": "鹤六",
+      "name_zh": "鹤六",
+      "name_en": "",
+      "magnitude": 4.11,
+      "ra": 345.22,
+      "dec": -52.7541,
+      "label": true,
+      "hip": "113638",
+      "x": 520.2,
+      "y": 595.6
+    },
+    "HIP_112623": {
+      "bayer": "ε",
+      "name": "鹤三",
+      "name_zh": "鹤三",
+      "name_en": "",
+      "magnitude": 3.49,
+      "ra": 342.1387,
+      "dec": -51.3169,
+      "label": true,
+      "hip": "112623",
+      "x": 464.0,
+      "y": 543.9
+    },
+    "HIP_112122": {
+      "bayer": "β",
+      "name": "鹤二",
+      "name_zh": "鹤二",
+      "name_en": "Tiaki",
+      "magnitude": 2.07,
+      "ra": 340.6669,
+      "dec": -46.8846,
+      "label": true,
+      "hip": "112122",
+      "x": 442.2,
+      "y": 400.4
+    },
+    "HIP_111043": {
+      "bayer": "δ2",
+      "name": "鹤十一",
+      "name_zh": "鹤十一",
+      "name_en": "",
+      "magnitude": 4.12,
+      "ra": 337.4393,
+      "dec": -43.7492,
+      "label": true,
+      "hip": "111043",
+      "x": 373.0,
+      "y": 297.9
+    },
+    "HIP_109268": {
+      "bayer": "α",
+      "name": "鹤一",
+      "name_zh": "鹤一",
+      "name_en": "Alnair",
+      "magnitude": 1.73,
+      "ra": 332.0583,
+      "dec": -46.961,
+      "label": true,
+      "hip": "109268",
+      "x": 254.4,
+      "y": 403.0
+    }
+  },
+  "lines": [
+    [
+      "HIP_110997",
+      "HIP_109908"
+    ],
+    [
+      "HIP_109908",
+      "HIP_109111"
+    ],
+    [
+      "HIP_109111",
+      "HIP_108085"
+    ],
+    [
+      "HIP_113638",
+      "HIP_112623"
+    ],
+    [
+      "HIP_112623",
+      "HIP_112122"
+    ],
+    [
+      "HIP_112122",
+      "HIP_111043"
+    ],
+    [
+      "HIP_111043",
+      "HIP_109268"
+    ],
+    [
+      "HIP_109268",
+      "HIP_112122"
+    ]
+  ],
+  "mansion": null,
+  "asterism_id": null,
+  "stories": {
+    "myth": {
+      "title": "天鹤座：南天初展之翼",
+      "paragraphs": [
+        "秋夜南天，天鹤座展翅于银河之畔。主星 Alnair（α Gru）位居鹤首，光呈蓝白；β Gru（Tiaki）位居双翼，翼展若张，仿佛正从天池汲水而起。",
+        "此星座古希腊罗马不知。1595 年荷兰航海家凯泽（Pieter Dirkszoon Keyser）与豪特曼（Frederick de Houtman）首航东印度，归途越非洲南端，望见南天繁星无数，欧洲星图皆未载之。",
+        "二人遂于归途创制十二南天新星座，记其所见异禽异兽。天鹤列于其首——以鹤喻航海之人，长途跋涉，终达彼岸。1603 年巴耶（Johan Bayer）刊行《测天图》（Uranometria），始将此鹤引入欧洲天文。",
+        "后世观此鹤，皆念当年水手远渡重洋之艰。它不只是鸟之形，更是人类探索未知的徽记。"
+      ]
+    },
+    "science": {
+      "title": "天鹤座 · 天文参数",
+      "paragraphs": [
+        "天鹤座（Grus）。赤经 22h28m，赤纬 -47°。面积 366 平方度。",
+        "主星：α Gru（Alnair 鹤一，蓝白主序星，星等 1.74）、β Gru（Tiaki 鹤二，红巨星）、γ Gru（Aldhanab 败臼一）。",
+        "深空天体：Grus Quartet 四重星系（NGC 7552、NGC 7582、NGC 7590、NGC 7599）、NGC 7213（赛弗特星系）。",
+        "最佳观测月份：10 月 - 11 月。"
+      ]
+    }
+  }
+}

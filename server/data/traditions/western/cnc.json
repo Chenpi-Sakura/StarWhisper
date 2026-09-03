@@ -1,0 +1,125 @@
+{
+  "abbr": "cnc",
+  "name": "巨蟹座",
+  "name_zh": "巨蟹座",
+  "name_en": "Crab",
+  "latin": "Cancer",
+  "glyph": "",
+  "season": "spring",
+  "caption": "",
+  "viewBox": {
+    "width": 700,
+    "height": 700
+  },
+  "center": {
+    "ra": 129.9468,
+    "dec": 13.1018
+  },
+  "stars": {
+    "HIP_42911": {
+      "bayer": "δ",
+      "name": "鬼宿四",
+      "name_zh": "鬼宿四",
+      "name_en": "Asellus Australis",
+      "magnitude": 3.94,
+      "ra": 131.1712,
+      "dec": 18.1543,
+      "label": true,
+      "hip": "42911",
+      "x": 373.5,
+      "y": 247.8
+    },
+    "HIP_40526": {
+      "bayer": "β",
+      "name": "柳宿增十",
+      "name_zh": "柳宿增十",
+      "name_en": "Tarf",
+      "magnitude": 3.53,
+      "ra": 124.1288,
+      "dec": 9.1855,
+      "label": true,
+      "hip": "40526",
+      "x": 233.8,
+      "y": 428.0
+    },
+    "HIP_44066": {
+      "bayer": "α",
+      "name": "柳宿增三",
+      "name_zh": "柳宿增三",
+      "name_en": "Acubens",
+      "magnitude": 4.26,
+      "ra": 134.6218,
+      "dec": 11.8577,
+      "label": true,
+      "hip": "44066",
+      "x": 442.5,
+      "y": 374.3
+    },
+    "HIP_42806": {
+      "bayer": "γ",
+      "name": "鬼宿三",
+      "name_zh": "鬼宿三",
+      "name_en": "Asellus Borealis",
+      "magnitude": 4.66,
+      "ra": 130.8214,
+      "dec": 21.4685,
+      "label": true,
+      "hip": "42806",
+      "x": 366.5,
+      "y": 180.7
+    },
+    "HIP_43100": {
+      "bayer": "ι",
+      "name": "ι",
+      "name_zh": "",
+      "name_en": "",
+      "magnitude": 6.58,
+      "ra": 131.6666,
+      "dec": 28.7651,
+      "label": true,
+      "hip": "43100",
+      "x": 381.0,
+      "y": 31.5
+    }
+  },
+  "lines": [
+    [
+      "HIP_42911",
+      "HIP_40526"
+    ],
+    [
+      "HIP_44066",
+      "HIP_42911"
+    ],
+    [
+      "HIP_42911",
+      "HIP_42806"
+    ],
+    [
+      "HIP_42806",
+      "HIP_43100"
+    ]
+  ],
+  "mansion": null,
+  "asterism_id": null,
+  "stories": {
+    "myth": {
+      "title": "巨蟹座：九头蛇之影",
+      "paragraphs": [
+        "春夜东升，巨蟹座黯然而隐，处狮子与双子之间。其星不甚明亮，主星 α Cnc（柳宿增三，Acubens）仅 4 等；然 M44 蜂巢星团高悬其畔，黯光点点，恰似蟹足之尘。",
+        "希腊神话载，赫拉克勒斯受命斩九头蛇许德拉（Hydra），天后赫拉遣巨蟹相助，令其噬英雄之足。巨蟹出没于沼泽，挥螯欲夹，赫拉克勒斯反身一足，将其踏为齑粉。",
+        "赫拉悯其尽忠而亡，乃置巨蟹于天，永悬黄道之上。然其体魄已碎，星图之中仅余黯淡之形，恰与其生前之狂妄不称。后世故云：巨蟹虽无功于天，亦得忠名永驻。",
+        "春夜仰望巨蟹，但见蜂巢星团隐约其间——蟹虽小，犹有群星相随；天地之间，忠勇不必以强弱论。"
+      ]
+    },
+    "science": {
+      "title": "巨蟹座 · 天文参数",
+      "paragraphs": [
+        "巨蟹座（Cancer）。赤经 8h40m 赤纬 +20°，面积 506 平方度。",
+        "主星：α Cnc（柳宿增三，Acubens，4.26 等，A 型双星）、β Cnc（柳宿增十，Tarf，3.53 等，K4III 橙巨星）、δ Cnc（鬼宿四，Asellus Australis，3.94 等，K0III 橙巨星）、γ Cnc（鬼宿三，Asellus Borealis，4.66 等，A1IV 亚巨星）。",
+        "深空天体：M44 蜂巢星团（鬼星团 / Praesepe，距约 577 光年，约 50 颗星聚合，肉眼朦胧可见）、M67 疏散星团（距约 2,700 光年）。",
+        "最佳观测月份：2 月 - 4 月。"
+      ]
+    }
+  }
+}

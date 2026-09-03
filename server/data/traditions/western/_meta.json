@@ -1,0 +1,11 @@
+{
+  "key": "western",
+  "label": "西方星座",
+  "label_en": "Western Constellations",
+  "description": "以古希腊罗马神话为基础的 88 个星座体系",
+  "epoch": "BCE 2nd century",
+  "source": "celestial_data (github.com/dieghernan/celestial_data)",
+  "license": "开源数据集原始许可",
+  "star_count": 88,
+  "coordinate_system": "equatorial"
+}

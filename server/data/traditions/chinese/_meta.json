@@ -1,0 +1,10 @@
+{
+  "key": "chinese",
+  "label": "中国古代星空",
+  "description": "二十八宿与三垣的星官体系",
+  "epoch": "远古至汉代定型",
+  "source": "celestial_data + 维基百科中西星名对照表",
+  "license": "CC-BY-SA 4.0 (维基对照表), 数据集原始许可",
+  "star_count": 309,
+  "coordinate_system": "mansion"
+}

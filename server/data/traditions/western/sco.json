@@ -1,0 +1,278 @@
+{
+  "abbr": "sco",
+  "name": "天蝎座",
+  "name_zh": "天蝎座",
+  "name_en": "Scorpion",
+  "latin": "Scorpius",
+  "glyph": "♏",
+  "season": "summer",
+  "caption": "南天巨蝎。心宿二是古观『大火』, 农人定季的星。",
+  "viewBox": {
+    "width": 700,
+    "height": 700
+  },
+  "center": {
+    "ra": 252.1628,
+    "dec": -33.6372
+  },
+  "stars": {
+    "HIP_78265": {
+      "bayer": "π",
+      "name": "房宿一",
+      "name_zh": "房宿一",
+      "name_en": "Fang",
+      "magnitude": 2.89,
+      "ra": 239.713,
+      "dec": -26.1141,
+      "label": true,
+      "hip": "78265",
+      "x": 138.0,
+      "y": 219.4
+    },
+    "HIP_78401": {
+      "bayer": "δ",
+      "name": "房宿三",
+      "name_zh": "房宿三",
+      "name_en": "Dschubba",
+      "magnitude": 2.29,
+      "ra": 240.08339999999998,
+      "dec": -22.6217,
+      "label": true,
+      "hip": "78401",
+      "x": 137.4,
+      "y": 152.2
+    },
+    "HIP_78820": {
+      "bayer": "β1",
+      "name": "房宿四",
+      "name_zh": "房宿四",
+      "name_en": "Acrab",
+      "magnitude": 2.56,
+      "ra": 241.35930000000002,
+      "dec": -19.8055,
+      "label": true,
+      "hip": "78820",
+      "x": 155.2,
+      "y": 96.1
+    },
+    "HIP_80112": {
+      "bayer": "σ",
+      "name": "心宿一",
+      "name_zh": "心宿一",
+      "name_en": "Alniyat",
+      "magnitude": 2.9,
+      "ra": 245.2972,
+      "dec": -25.5928,
+      "label": true,
+      "hip": "80112",
+      "x": 232.6,
+      "y": 201.5
+    },
+    "HIP_80763": {
+      "bayer": "α",
+      "name": "心宿二",
+      "name_zh": "心宿二",
+      "name_en": "Antares",
+      "magnitude": 1.06,
+      "ra": 247.3519,
+      "dec": -26.432,
+      "label": true,
+      "hip": "80763",
+      "x": 268.4,
+      "y": 215.6
+    },
+    "HIP_81266": {
+      "bayer": "τ",
+      "name": "心宿三",
+      "name_zh": "心宿三",
+      "name_en": "Paikauhale",
+      "magnitude": 2.82,
+      "ra": 248.9706,
+      "dec": -28.216,
+      "label": true,
+      "hip": "81266",
+      "x": 296.8,
+      "y": 248.4
+    },
+    "HIP_82396": {
+      "bayer": "ε",
+      "name": "尾宿二",
+      "name_zh": "尾宿二",
+      "name_en": "Larawag",
+      "magnitude": 2.29,
+      "ra": 252.5409,
+      "dec": -34.2932,
+      "label": true,
+      "hip": "82396",
+      "x": 355.9,
+      "y": 362.4
+    },
+    "HIP_82514": {
+      "bayer": "μ1",
+      "name": "尾宿一",
+      "name_zh": "尾宿一",
+      "name_en": "Xamidimura",
+      "magnitude": 3.0,
+      "ra": 252.9676,
+      "dec": -38.0474,
+      "label": true,
+      "hip": "82514",
+      "x": 362.0,
+      "y": 433.3
+    },
+    "HIP_82729": {
+      "bayer": "ζ2",
+      "name": "Grafias",
+      "name_zh": "",
+      "name_en": "Grafias",
+      "magnitude": 3.62,
+      "ra": 253.64589999999998,
+      "dec": -42.3613,
+      "label": true,
+      "hip": "82729",
+      "x": 370.8,
+      "y": 515.1
+    },
+    "HIP_84143": {
+      "bayer": "η",
+      "name": "尾宿四",
+      "name_zh": "尾宿四",
+      "name_en": "",
+      "magnitude": 3.32,
+      "ra": 258.0383,
+      "dec": -43.2392,
+      "label": true,
+      "hip": "84143",
+      "x": 431.3,
+      "y": 534.2
+    },
+    "HIP_86228": {
+      "bayer": "θ",
+      "name": "尾宿五",
+      "name_zh": "尾宿五",
+      "name_en": "Sargas",
+      "magnitude": 1.86,
+      "ra": 264.3297,
+      "dec": -42.9978,
+      "label": true,
+      "hip": "86228",
+      "x": 518.9,
+      "y": 538.2
+    },
+    "HIP_87073": {
+      "bayer": "ι1",
+      "name": "尾宿六",
+      "name_zh": "尾宿六",
+      "name_en": "Girtab",
+      "magnitude": 2.99,
+      "ra": 266.8962,
+      "dec": -40.127,
+      "label": true,
+      "hip": "87073",
+      "x": 563.1,
+      "y": 489.1
+    },
+    "HIP_86670": {
+      "bayer": "κ",
+      "name": "尾宿七",
+      "name_zh": "尾宿七",
+      "name_en": "Mula",
+      "magnitude": 2.39,
+      "ra": 265.622,
+      "dec": -39.03,
+      "label": true,
+      "hip": "86670",
+      "x": 547.6,
+      "y": 465.6
+    },
+    "HIP_85927": {
+      "bayer": "λ",
+      "name": "尾宿八",
+      "name_zh": "尾宿八",
+      "name_en": "Shaula",
+      "magnitude": 1.62,
+      "ra": 263.4022,
+      "dec": -37.1038,
+      "label": true,
+      "hip": "85927",
+      "x": 519.3,
+      "y": 425.1
+    }
+  },
+  "lines": [
+    [
+      "HIP_78265",
+      "HIP_78401"
+    ],
+    [
+      "HIP_78401",
+      "HIP_78820"
+    ],
+    [
+      "HIP_78401",
+      "HIP_80112"
+    ],
+    [
+      "HIP_80112",
+      "HIP_80763"
+    ],
+    [
+      "HIP_80763",
+      "HIP_81266"
+    ],
+    [
+      "HIP_81266",
+      "HIP_82396"
+    ],
+    [
+      "HIP_82396",
+      "HIP_82514"
+    ],
+    [
+      "HIP_82514",
+      "HIP_82729"
+    ],
+    [
+      "HIP_82729",
+      "HIP_84143"
+    ],
+    [
+      "HIP_84143",
+      "HIP_86228"
+    ],
+    [
+      "HIP_86228",
+      "HIP_87073"
+    ],
+    [
+      "HIP_87073",
+      "HIP_86670"
+    ],
+    [
+      "HIP_86670",
+      "HIP_85927"
+    ]
+  ],
+  "mansion": null,
+  "asterism_id": null,
+  "stories": {
+    "myth": {
+      "title": "天蝎座：永不相见之誓",
+      "paragraphs": [
+        "夏夜南天，天蝎座盘踞低垂，尾刺直指银河。主星 Antares（α Sco）色呈赤红，希腊人以其与火星同色，名之\"火星之敌手\"（Anti-Ares）。",
+        "神话所传，猎户俄里翁逐猎四方，狂言无匹。天后赫拉怒其傲慢，乃遣巨蝎杀之。蝎尾蛰入俄里翁足踵，猎人应声倒地。宙斯悯之，升猎户为天，又恐蝎复害之，遂令二者隔银河相望，永不出同天。",
+        "故冬之猎户既没，夏之天蝎方升。千万年来，二者以银河为界，春去秋来，从不相逢。",
+        "世人若于夏夜南望，见天蝎尾钩高悬，便知其毒刺犹在；而北天猎户，则正在冬夜静静等候。"
+      ]
+    },
+    "science": {
+      "title": "天蝎座 · 天文参数",
+      "paragraphs": [
+        "天蝎座（Scorpius）。赤经 16h53m，赤纬 -26°。面积 497 平方度。",
+        "主星：α Sco（Antares，红超巨星）、λ Sco（Shaula）、δ Sco（Dschubba）。",
+        "深空天体：M4（球状星团）、M6 蝴蝶星团、M7 托勒密星团。",
+        "最佳观测月份：6 月 - 8 月。"
+      ]
+    }
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "abbr": "ari",
+  "name": "白羊座",
+  "name_zh": "白羊座",
+  "name_en": "Ram",
+  "latin": "Aries",
+  "glyph": "",
+  "season": "winter",
+  "caption": "",
+  "viewBox": {
+    "width": 700,
+    "height": 700
+  },
+  "center": {
+    "ra": 32.6972,
+    "dec": 22.8061
+  },
+  "stars": {
+    "HIP_13209": {
+      "bayer": "c",
+      "name": "胃宿三",
+      "name_zh": "胃宿三",
+      "name_en": "Bharani",
+      "magnitude": 3.61,
+      "ra": 42.496,
+      "dec": 27.2605,
+      "label": true,
+      "hip": "13209",
+      "x": 630.8,
+      "y": 196.5
+    },
+    "HIP_9884": {
+      "bayer": "α",
+      "name": "娄宿三",
+      "name_zh": "娄宿三",
+      "name_en": "Hamal",
+      "magnitude": 2.01,
+      "ra": 31.7934,
+      "dec": 23.4624,
+      "label": true,
+      "hip": "9884",
+      "x": 323.3,
+      "y": 328.8
+    },
+    "HIP_8903": {
+      "bayer": "β",
+      "name": "娄宿一",
+      "name_zh": "娄宿一",
+      "name_en": "Sheratan",
+      "magnitude": 2.64,
+      "ra": 28.66,
+      "dec": 20.808,
+      "label": true,
+      "hip": "8903",
+      "x": 228.6,
+      "y": 412.7
+    },
+    "HIP_8832": {
+      "bayer": "γ1",
+      "name": "娄宿二",
+      "name_zh": "娄宿二",
+      "name_en": "Mesarthim",
+      "magnitude": 3.88,
+      "ra": 28.3826,
+      "dec": 19.2939,
+      "label": true,
+      "hip": "8832",
+      "x": 218.9,
+      "y": 461.2
+    }
+  },
+  "lines": [
+    [
+      "HIP_13209",
+      "HIP_9884"
+    ],
+    [
+      "HIP_9884",
+      "HIP_8903"
+    ],
+    [
+      "HIP_8903",
+      "HIP_8832"
+    ]
+  ],
+  "mansion": null,
+  "asterism_id": null,
+  "stories": {
+    "myth": {
+      "title": "白羊座：金毛与救赎之征",
+      "paragraphs": [
+        "秋夜东升，白羊座伏于黄道之侧。主星 Hamal（α Ari）位居羊首，光辉橘黄，温润而暖；Sheratan（β Ari）次之，与 Mesarthim（γ Ari）并列成双，恰似羊首回望之姿。",
+        "希腊神话载，玻俄提亚王子弗里克索斯（Phrixus）与公主赫勒（Helle）遭后母伊诺陷害，将被祭于天神。赫尔墨斯怜之，遣金毛圣羊自天而降，背负二人渡海逃生。",
+        "赫勒中途坠海而亡，其名遂为海峡之名——赫勒斯滂。弗里克索斯独达科尔喀斯，将金羊献于神坛，悬挂金羊毛于圣林。数年之后，伊阿宋率阿尔戈英雄远渡取之，遂成希腊最壮丽之征。",
+        "后世仰望此座，皆见一羊伏首而卧，仿佛仍在回望当年所负之少年——盖救命之恩，虽百世亦不可忘。"
+      ]
+    },
+    "science": {
+      "title": "白羊座 · 天文参数",
+      "paragraphs": [
+        "白羊座（Aries）。赤经 1h44m - 3h27m，赤纬 +10° 至 +31°。面积 441 平方度。",
+        "主星：α Ari（Hamal，娄宿三，橙色巨星）、β Ari（Sheratan，分光双星）、γ Ari（Mesarthim，双星）。",
+        "深空天体：NGC 772 旋涡星系（距 1.3 亿光年）、NGC 1156 不规则星系。",
+        "最佳观测月份：10 月 - 12 月。"
+      ]
+    }
+  }
+}

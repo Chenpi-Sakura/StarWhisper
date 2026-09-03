@@ -1,0 +1,10 @@
+{
+  "betelgeuse": { "abbr": "ori", "bayer": "Alpha Ori",   "name": "参宿四", "ra": 88.7929, "dec":  7.4071, "magnitude": 0.42 },
+  "bellatrix":  { "abbr": "ori", "bayer": "Gamma Ori",   "name": "参宿五", "ra": 81.2829, "dec":  6.3497, "magnitude": 1.64 },
+  "meissa":     { "abbr": "ori", "bayer": "Lambda Ori",  "name": "觜宿一", "ra": 83.7846, "dec":  9.9342, "magnitude": 3.39 },
+  "alnitak":    { "abbr": "ori", "bayer": "Zeta Ori",    "name": "参宿一", "ra": 85.1896, "dec": -1.9428, "magnitude": 1.74 },
+  "alnilam":    { "abbr": "ori", "bayer": "Epsilon Ori", "name": "参宿二", "ra": 84.0533, "dec": -1.2019, "magnitude": 1.69 },
+  "mintaka":    { "abbr": "ori", "bayer": "Delta Ori",   "name": "参宿三", "ra": 83.0017, "dec": -0.2991, "magnitude": 2.23 },
+  "saiph":      { "abbr": "ori", "bayer": "Kappa Ori",   "name": "参宿六", "ra": 86.9392, "dec": -9.6696, "magnitude": 2.06 },
+  "rigel":      { "abbr": "ori", "bayer": "Beta Ori",    "name": "参宿七", "ra": 78.6346, "dec": -8.2017, "magnitude": 0.13 }
+}

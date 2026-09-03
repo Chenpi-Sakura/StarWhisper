@@ -1,0 +1,11 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+httpx>=0.27
+python-multipart>=0.0.9
+pytest>=8.0
+astropy>=5.0
+pillow-heif>=0.16
+cachetools>=5.0
+pytest-asyncio>=0.23
+truststore>=0.9
+astral>=3.2
