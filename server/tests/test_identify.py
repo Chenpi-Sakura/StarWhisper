@@ -15,6 +15,7 @@ import io
 import math
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
@@ -22,6 +23,11 @@ from main import app
 
 
 client = TestClient(app)
+
+
+# 全文件为 integration 标记 — astropy WCS 投影 + find_nearest 每个测试 ~3s，
+# 21 个测试累计 ~60s。日常开发用 `pytest -m ""` 跑全量。
+pytestmark = pytest.mark.integration
 
 
 def _make_jpeg_bytes(width: int = 100, height: int = 100) -> bytes:

@@ -26,12 +26,19 @@ const sampleMeta: StoryResponse = {
 beforeEach(() => setActivePinia(createPinia()))
 afterEach(() => vi.unstubAllGlobals())
 
-describe('fetchStoryStream SSE 聚合', () => {
-  it('title → paragraph ×N → done 聚合到 current', async () => {
+describe('fetchStoryStream SSE 字符级聚合（P2-16）', () => {
+  it('title → char ×N → done 聚合到 streamTitle / streamText / current', async () => {
     const frames = [
       'event: title\ndata: {"title":"猎户神话"}',
-      'event: paragraph\ndata: {"index":0,"text":"第一段"}',
-      'event: paragraph\ndata: {"index":1,"text":"第二段"}',
+      'event: char\ndata: {"char":"\\n"}',
+      'event: char\ndata: {"char":"第"}',
+      'event: char\ndata: {"char":"一"}',
+      'event: char\ndata: {"char":"段"}',
+      'event: char\ndata: {"char":"\\n"}',
+      'event: char\ndata: {"char":"\\n"}',
+      'event: char\ndata: {"char":"第"}',
+      'event: char\ndata: {"char":"二"}',
+      'event: char\ndata: {"char":"段"}',
       `event: done\ndata: ${JSON.stringify(sampleMeta)}`,
     ]
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeSSEResponse(frames)))
@@ -40,7 +47,7 @@ describe('fetchStoryStream SSE 聚合', () => {
     await story.fetchStoryStream('ori', 'myth', 'fresh')
     expect(story.current).toEqual(sampleMeta)
     expect(story.streamTitle).toBe('猎户神话')
-    expect(story.streamParagraphs).toHaveLength(2)
+    expect(story.streamText).toBe('\n第一段\n\n第二段')
     expect(story.streaming).toBe(false)
   })
 
@@ -69,10 +76,10 @@ describe('fetchStoryStream SSE 聚合', () => {
     const result = await story.fetchStoryStream('ori', 'myth', 'refetch')
     expect(result).toEqual(cached)
     expect(fetchMock).not.toHaveBeenCalled()
-    // 缓存命中不走伪流式——streamTitle/streamParagraphs 保持默认空，
+    // 缓存命中不走流式——streamTitle/streamText 保持默认空，
     // UI 会从 current.paragraphs 一次性渲染。
     expect(story.streamTitle).toBe('')
-    expect(story.streamParagraphs).toEqual([])
+    expect(story.streamText).toBe('')
     expect(story.streaming).toBe(false)
   })
 
@@ -85,13 +92,15 @@ describe('fetchStoryStream SSE 聚合', () => {
     expect(story.streamError).toBe('HTTP 500')
   })
 
-  it('P0-3: reset 事件清空半截 title/paragraph，等待 preset 重放', async () => {
+  it('P0-3: reset 事件清空半截 streamTitle/streamText，等待 preset 全量重放', async () => {
     const frames = [
       'event: title\ndata: {"title":"半截标题"}',
-      'event: paragraph\ndata: {"index":0,"text":"半截段落"}',
+      'event: char\ndata: {"char":"半"}',
+      'event: char\ndata: {"char":"截"}',
       'event: reset\ndata: {}',
       'event: title\ndata: {"title":"预设标题"}',
-      'event: paragraph\ndata: {"index":0,"text":"预设第一段"}',
+      'event: char\ndata: {"char":"预"}',
+      'event: char\ndata: {"char":"设"}',
       `event: done\ndata: ${JSON.stringify({ ...sampleMeta, degraded: true, provider: 'fallback' })}`,
     ]
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeSSEResponse(frames)))
@@ -100,7 +109,7 @@ describe('fetchStoryStream SSE 聚合', () => {
     await story.fetchStoryStream('ori', 'myth', 'fresh')
     // reset 之后的 preset 内容完整落地，半截内容被清掉
     expect(story.streamTitle).toBe('预设标题')
-    expect(story.streamParagraphs.map((p) => p.text)).toEqual(['预设第一段'])
+    expect(story.streamText).toBe('预设')
     expect(story.current?.degraded).toBe(true)
   })
 
@@ -114,6 +123,7 @@ describe('fetchStoryStream SSE 聚合', () => {
       }
       return Promise.resolve(makeSSEResponse([
         'event: title\ndata: {"title":"新流标题"}',
+        'event: char\ndata: {"char":"新"}',
         `event: done\ndata: ${JSON.stringify({ ...sampleMeta, style: 'science' })}`,
       ]))
     })
@@ -127,16 +137,19 @@ describe('fetchStoryStream SSE 聚合', () => {
     // 旧流被 abort
     expect(signals[0].aborted).toBe(true)
     expect(story.streamTitle).toBe('新流标题')
+    expect(story.streamText).toBe('新')
     expect(story.current?.style).toBe('science')
 
     // 旧流此后才返回完整事件——不得写入 store
     resolveA(makeSSEResponse([
       'event: title\ndata: {"title":"旧流迟到标题"}',
+      'event: char\ndata: {"char":"旧"}',
       `event: done\ndata: ${JSON.stringify(sampleMeta)}`,
     ]))
     await p1.catch(() => {})  // 被取代的请求以 AbortError 收场
     await new Promise((r) => setTimeout(r, 0))
     expect(story.streamTitle).toBe('新流标题')
+    expect(story.streamText).toBe('新')
     expect(story.current?.style).toBe('science')
   })
 })

@@ -86,7 +86,8 @@ export interface StoryResponse {
 
 export type StoryStreamEvent =
   | { type: 'title'; title: string }
-  | { type: 'paragraph'; index: number; text: string }
+  /** P2-16：字符级事件——AI 推多快前端就显示多快，\n 自然换行、\n\n 段落间距。 */
+  | { type: 'char'; char: string }
   | { type: 'done'; meta: StoryResponse }
   | { type: 'reset' }
   | { type: 'error'; message: string }
@@ -103,6 +104,8 @@ export interface StoryRequest {
   style: StoryStyle
   lang: 'zh'
   cacheBust?: number
+  /** P2-12：可选 tradition key（western / chinese）；缺省按 abbr 跨 tradition 首命中。 */
+  tradition?: string
 }
 
 /**

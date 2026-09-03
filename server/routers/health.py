@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from config import (
     AGENTARTS_API_KEY,
+    AGENTARTS_BASE_URL,
     AGENTARTS_RUNTIME_NAME,
     AI_API_KEY,
     AI_MODEL,
@@ -23,9 +24,7 @@ async def health():
     上游真实可达性探测交给调用方按需做（这里仅看启动期配置。
     AgentArts 已配置（API Key + runtime）时优先展示 agentarts 运行时。
     """
-    from config import AGENTARTS_AGENT_ID as _AID  # noqa: F401
-
-    has_any_ai = bool(AI_API_KEY or AGENTARTS_API_KEY)
+    has_any_ai = bool(AI_API_KEY or (AGENTARTS_API_KEY and AGENTARTS_BASE_URL and AGENTARTS_RUNTIME_NAME))
     if not has_any_ai:
         ai_state = 'disabled'
         ai_model = 'none'

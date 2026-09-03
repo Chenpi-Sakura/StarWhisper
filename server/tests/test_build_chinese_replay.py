@@ -7,6 +7,13 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
+
+
+# subprocess 调用 build_chinese_stars.py 两次 + git status 对比，约 8s；
+# 历史 flaky（build 顺序非确定性）。日常跳过；CI 全量跑用 `pytest -m ""`。
+pytestmark = pytest.mark.integration
+
 
 def test_build_replay_idempotent():
     """连跑两次 build_chinese_stars.py，git status 应无 chinese/ 下的 dirty 行。

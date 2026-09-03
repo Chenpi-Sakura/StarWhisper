@@ -6,15 +6,25 @@
 - 风格非法 → 400 INVALID_STYLE
 - DisabledProvider / AI 失败 → fallback preset（`degraded:true`，**非 503**）
 - 503 STORY_DISABLED 仅当 preset 文件缺失时
-- `/api/story/stream`：SSE 打字机流（event:title / paragraph / done / error）；
-  降级前先发 `reset` 事件（P0-3：前端清空半截内容，避免拼接）
+- `/api/story/stream`：SSE 字符级流（event:title / char / done / error / reset）。
+  字符级协议：title 事件发一次（首 \n 触发）；之后逐字 yield event:char，
+  AI 推多快前端就显示多快（不做人为节流）。\n 自然换行、\n\n 自然段间距。
+  降级前先发 `reset` 事件（P0-3：前端清空半截内容，避免拼接）。
 - P1-7 端到端总时长预算（STORY_TOTAL_TIMEOUT）/ P1-8 断连取消 AI 调用 /
   P1-9 故障熔断 / P1-10 按 IP 限流 / P1-11 缓存命中 latency_ms 归零
+- P2-12 请求可显式携带 tradition（缺省仍按 abbr 跨 tradition 首命中向后兼容）；
+  缓存 key 升级为 (tradition, abbr, style) 三维
+- P2-13 prompt 星点按星等截断（STORY_PROMPT_MAX_STARS）+ 数据 .get() 防护
+- P2-14 AI 输出剥离 Markdown 标记（非流式 / parse_story_text 路径）；流式字符级
+  信任 prompt 约束（输出仅含标题+段落正文，不要 JSON / Markdown 标记），按原样透传
+- P2-16 流式字符级：缓存命中与降级 preset 路径也走 char 事件，前端单套渲染逻辑
 """
 from __future__ import annotations
 
 import asyncio
 import json
+import logging
+import re
 import time
 from threading import Lock
 from typing import AsyncIterator
@@ -28,6 +38,7 @@ from config import (
     AI_MODEL,
     STORY_CB_COOLDOWN,
     STORY_CB_THRESHOLD,
+    STORY_PROMPT_MAX_STARS,
     STORY_RATE_LIMIT,
     STORY_RATE_WINDOW,
     STORY_TOTAL_TIMEOUT,
@@ -44,6 +55,8 @@ from services.story_fallback import get_preset
 
 
 router = APIRouter(prefix="/api/story", tags=["story"])
+
+logger = logging.getLogger(__name__)
 
 _STYLES = {"myth", "science"}
 _STORY_CACHE: TTLCache = TTLCache(maxsize=96, ttl=600)  # 10 min
@@ -123,16 +136,19 @@ def _check_rate_limit(request: Request) -> None:
                 _RATE_BUCKETS.pop(k, None)
 
 
-def _cache_key(abbr: str, style: str) -> tuple[str, str]:
-    return (abbr, style)
+def _cache_key(tradition: str, abbr: str, style: str) -> tuple[str, str, str]:
+    """P2-12：缓存 key 升级为 (tradition, abbr, style) 三维。"""
+    return (tradition, abbr, style)
 
 
-def _find_constellation(abbr: str) -> dict | None:
-    """跨 tradition 查找 abbr（保持 story 端点向后兼容）。
+def _find_constellation(abbr: str, tradition: str | None = None) -> dict | None:
+    """查找星座条目（含 tradition 字段），或 None。
 
-    返回第一个命中的 entry（含 tradition 字段），或 None。
-    MVP 阶段 abbr 在多 tradition 中重复时选择 traditions 中字母序靠前的。
+    P2-12：显式传 tradition 时只在该 tradition 内查（不再隐式首命中）；
+    未传时保持向后兼容——跨 tradition 按 key 字母序取首个命中。
     """
+    if tradition:
+        return get_constellation(tradition, abbr)
     for t in list_traditions():
         entry = get_constellation(t["key"], abbr)
         if entry is not None:
@@ -140,21 +156,33 @@ def _find_constellation(abbr: str) -> dict | None:
     return None
 
 
-def _cache_get(abbr: str, style: str) -> dict | None:
+def _resolve_tradition(abbr: str, requested: str | None) -> str:
+    """解析缓存/降级要用的 tradition key（P2-12）。
+
+    请求带 tradition → 直接用（调用方已校验命中）；否则回退跨 tradition
+    首命中结果的 tradition 字段。找不到（_check_request 已拦，这里兜底）→ "western"。
+    """
+    if requested:
+        return requested.lower()
+    entry = _find_constellation(abbr)
+    return (entry or {}).get("tradition", "western")
+
+
+def _cache_get(tradition: str, abbr: str, style: str) -> dict | None:
     with _CACHE_LOCK:
-        return _STORY_CACHE.get(_cache_key(abbr, style))
+        return _STORY_CACHE.get(_cache_key(tradition, abbr, style))
 
 
-def _cache_put(abbr: str, style: str, payload: dict) -> None:
+def _cache_put(tradition: str, abbr: str, style: str, payload: dict) -> None:
     """degraded:true 不写缓存（spec §5.4 / §16.4：失败一次别让整场都是离线故事）。"""
     if payload.get("degraded"):
         return
     with _CACHE_LOCK:
-        _STORY_CACHE[_cache_key(abbr, style)] = payload
+        _STORY_CACHE[_cache_key(tradition, abbr, style)] = payload
 
 
 class StoryRequest(BaseModel):
-    """请求体：星座缩写 + 视角 + 语言 + 可选 cacheBust。"""
+    """请求体：星座缩写 + 视角 + 语言 + 可选 cacheBust / tradition。"""
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -162,9 +190,37 @@ class StoryRequest(BaseModel):
     style: str = Field(..., description="视角 myth | science")
     lang: str = Field("zh", description="语言代码，暂固定 zh")
     cacheBust: bool = Field(False, alias="cacheBust")
+    tradition: str | None = Field(
+        None,
+        description="P2-12：tradition key（western / chinese）；缺省时按 abbr 跨 tradition 首命中",
+    )
 
 
 _TITLE_PREFIXES = ("标题：", "标题:", "Title:", "title:", "# ")
+
+# P2-14：AI 输出常见 Markdown 标记的清洗规则
+_MD_CODE = re.compile(r"`([^`]*)`")
+_MD_BOLD = re.compile(r"\*\*(.+?)\*\*")
+_MD_ITALIC = re.compile(r"(?<!\*)\*([^*\n]+)\*(?!\*)")
+_MD_HEADING = re.compile(r"^#{1,6}\s*", re.MULTILINE)
+_MD_BULLET = re.compile(r"^[-*•]\s+", re.MULTILINE)
+_MD_NUM_LIST = re.compile(r"^\d+[.、）)]\s*", re.MULTILINE)
+
+
+def clean_markdown(text: str) -> str:
+    """剥离 LLM 输出中常见 Markdown 标记（P2-14），返回清洗后的纯文本。
+
+    处理：行内代码反引号、**加粗** / *斜体*、行首 # 标题、行首 -/*• 列表符、
+    行首 1. / 一、编号。幂等：纯文本原样返回。
+    """
+    s = text or ""
+    s = _MD_CODE.sub(r"\1", s)
+    s = _MD_BOLD.sub(r"\1", s)
+    s = _MD_ITALIC.sub(r"\1", s)
+    s = _MD_HEADING.sub("", s)
+    s = _MD_BULLET.sub("", s)
+    s = _MD_NUM_LIST.sub("", s)
+    return s.strip()
 
 
 def _strip_title_prefix(line: str) -> str:
@@ -179,7 +235,8 @@ def _strip_title_prefix(line: str) -> str:
 def parse_story_text(text: str, fallback_title: str) -> tuple[str, list[str]]:
     """解析 LLM 输出全文（P0-2：流式/非流式共用同一套算法，spec §646）。
 
-    - **首行为 title**（剥前缀），其余按 \\n\\n 切 paragraphs
+    - **首行为 title**（先清洗 Markdown 再剥前缀，避免「**标题：猎户**」漏剥），
+      其余按 \\n\\n 切 paragraphs 并逐段清洗 Markdown（P2-14）
     - 只有单行没有正文 → 回退 fallback_title + 整段为单 paragraph
     - 空文本 → (fallback_title, [])
     """
@@ -187,10 +244,12 @@ def parse_story_text(text: str, fallback_title: str) -> tuple[str, list[str]]:
     if not text:
         return fallback_title, []
     first_line, _, rest = text.partition("\n")
-    title = _strip_title_prefix(first_line)
-    body = [p.strip() for p in rest.split("\n\n") if p.strip()]
+    # P2-14：清洗先行，再剥前缀——处理 AI 输出「**标题：猎户**」这类被 Markdown 包裹的标题
+    title = _strip_title_prefix(clean_markdown(first_line))
+    body = [clean_markdown(p) for p in rest.split("\n\n") if p.strip()]
+    body = [p for p in body if p]
     if not body:
-        return fallback_title, [text]
+        return fallback_title, [clean_markdown(text)]
     return title or fallback_title, body
 
 
@@ -204,8 +263,8 @@ def _classify_reason(exc: Exception) -> str:
     return "AI_PROVIDER_5XX"
 
 
-def _check_request(body: StoryRequest) -> tuple[str, str]:
-    """校验 style / abbr；合法则返回 (abbr, style)。"""
+def _check_request(body: StoryRequest) -> tuple[str, str, str | None]:
+    """校验 style / abbr / tradition；合法则返回 (abbr, style, tradition | None)。"""
     if body.style not in _STYLES:
         raise HTTPException(
             status_code=400,
@@ -214,7 +273,26 @@ def _check_request(body: StoryRequest) -> tuple[str, str]:
                 "message": f"style 必须是 {sorted(_STYLES)} 之一",
             },
         )
-    # 跨 tradition 收集 abbr（保持向后兼容，不需客户端传 tradition）
+    if body.tradition:
+        trad_keys = {t["key"] for t in list_traditions()}
+        if body.tradition.lower() not in trad_keys:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "INVALID_TRADITION",
+                    "message": f"tradition 必须是 {sorted(trad_keys)} 之一",
+                },
+            )
+        if get_constellation(body.tradition.lower(), body.abbr) is None:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "CONSTELLATION_NOT_FOUND",
+                    "message": "未收录此星座",
+                },
+            )
+        return body.abbr, body.style, body.tradition.lower()
+    # 未带 tradition：跨 tradition 收集 abbr（向后兼容，首命中）
     valid_abbrs = {
         c["abbr"]
         for t in list_traditions()
@@ -228,12 +306,16 @@ def _check_request(body: StoryRequest) -> tuple[str, str]:
                 "message": "未收录此星座",
             },
         )
-    return body.abbr, body.style
+    return body.abbr, body.style, None
 
 
-def _build_prompt(abbr: str, style: str) -> tuple[str, str, str]:
-    """构造 system/user prompt + 兜底标题。"""
-    constellation = _find_constellation(abbr)
+def _build_prompt(abbr: str, style: str, tradition: str | None = None) -> tuple[str, str, str]:
+    """构造 system/user prompt + 兜底标题。
+
+    P2-12：显式 tradition 优先；P2-13：星点按星等取最亮的前
+    STORY_PROMPT_MAX_STARS 颗，字段全部 .get() 访问（缺键跳过不抛错）。
+    """
+    constellation = _find_constellation(abbr, tradition)
     if constellation is None:
         raise HTTPException(
             status_code=404,
@@ -246,9 +328,20 @@ def _build_prompt(abbr: str, style: str) -> tuple[str, str, str]:
     latin = constellation.get("latin", "")
     style_zh = STYLE_ZH.get(style, style)
     tradition = constellation.get("tradition", "western")
+
+    # P2-13：先做字段防护再按星等排序截断，防止 token 膨胀（轩辕 70 星）
+    star_entries: list[tuple[float, str]] = []
+    for s in constellation.get("stars", {}).values():
+        name = s.get("name") or s.get("bayer")
+        if not name:
+            continue
+        mag = s.get("magnitude")
+        mag_val = mag if isinstance(mag, (int, float)) else 99.0
+        star_entries.append((float(mag_val), name))
+    star_entries.sort(key=lambda x: x[0])
     primary_stars = "\n".join(
-        f"- {s['bayer']} {s['name']}，星等 {s['magnitude']}"
-        for s in constellation.get("stars", {}).values()
+        f"- {name}，星等 {mag:g}" if mag < 99 else f"- {name}"
+        for mag, name in star_entries[:STORY_PROMPT_MAX_STARS]
     ) or "（无）"
 
     user_prompt = USER_TEMPLATE.format(
@@ -271,14 +364,17 @@ async def _resolve_payload(
     abbr: str,
     style: str,
     bust: bool,
+    tradition: str | None = None,
 ) -> dict:
     """生成/取故事完整 payload（缓存命中 / AI / preset 降级）。
 
-    返回字段与既有 `POST /api/story` 一致；degraded 不写缓存。
+    P2-12：tradition 先解析为具体 key 再参与缓存 key；degraded 不写缓存。
     """
+    trad = _resolve_tradition(abbr, tradition)
+
     # 查缓存（不缓存 degraded:true；bust 跳过）
     if not bust:
-        cached = _cache_get(abbr, style)
+        cached = _cache_get(trad, abbr, style)
         if cached is not None:
             # P1-11：latency_ms 为本次命中耗时（≈0），首次生成耗时挪到 origin_latency_ms
             return {
@@ -290,9 +386,9 @@ async def _resolve_payload(
 
     # P1-9：熔断开启（冷却期内）→ 直接走 preset，不让请求干等超时
     if not _BREAKER.allow():
-        return _preset_payload(abbr, style, "AI_CIRCUIT_OPEN")
+        return _preset_payload(abbr, style, "AI_CIRCUIT_OPEN", tradition=trad)
 
-    system_prompt, user_prompt, fallback_title = _build_prompt(abbr, style)
+    system_prompt, user_prompt, fallback_title = _build_prompt(abbr, style, trad)
 
     start = time.time()
     provider = make_provider()
@@ -305,6 +401,14 @@ async def _resolve_payload(
         title, body_paragraphs = parse_story_text(text, fallback_title)
         if not body_paragraphs:
             raise RuntimeError("AI_PROVIDER_PARSE_ERROR: empty paragraphs")
+
+        # P2-14：字数/段落数软校验——只记日志，不阻断（输出异常宽进严出）
+        total_chars = sum(len(p) for p in body_paragraphs)
+        if len(body_paragraphs) < 2 or total_chars < 150:
+            logger.warning(
+                "story output short: abbr=%s style=%s paras=%d chars=%d",
+                abbr, style, len(body_paragraphs), total_chars,
+            )
 
         _BREAKER.record_success()
         payload = {
@@ -319,13 +423,14 @@ async def _resolve_payload(
             "cached": False,
             "degraded": False,
         }
-        _cache_put(abbr, style, payload)
+        _cache_put(trad, abbr, style, payload)
         return payload
 
     except Exception as exc:
         _BREAKER.record_failure()
         return _preset_payload(
-            abbr, style, _classify_reason(exc), elapsed=time.time() - start
+            abbr, style, _classify_reason(exc), elapsed=time.time() - start,
+            tradition=trad,
         )
 
 
@@ -335,9 +440,10 @@ def _preset_payload(
     reason: str,
     *,
     elapsed: float = 0.0,
+    tradition: str | None = None,
 ) -> dict:
     """构造 preset 降级 payload；preset 缺失时抛 503 STORY_DISABLED。"""
-    preset = get_preset(abbr, style)
+    preset = get_preset(abbr, style, tradition)
     if preset is None:
         raise HTTPException(
             status_code=503,
@@ -368,25 +474,27 @@ async def post_story(
     cache_bust: int = Header(0, alias="Cache-Bust"),
 ):
     _check_rate_limit(request)  # P1-10
-    abbr, style = _check_request(body)
+    abbr, style, tradition = _check_request(body)
     bust = bool(body.cacheBust) or cache_bust == 1
-    return await _resolve_payload(abbr, style, bust)
+    return await _resolve_payload(abbr, style, bust, tradition)
 
 
 def _sse(event: str, data: object) -> str:
     """封装一条 SSE 帧。data 为 JSON 字符串。"""
-    import json as _json
-
-    return f"event: {event}\ndata: {_json.dumps(data, ensure_ascii=False)}\n\n"
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-def _preset_sse(abbr: str, style: str, reason: str, *, elapsed: float = 0.0) -> str:
-    """P0-3：降级事件的完整 SSE 帧串（title + paragraphs + done）。
+def _preset_chars_sse(
+    abbr: str, style: str, reason: str, *, elapsed: float = 0.0,
+    tradition: str | None = None,
+) -> str:
+    """P2-16：降级事件的完整 SSE 帧串（title + char ×N + done）。
 
+    字符级协议：title 一次，body 按段落拆 char，段落间两个 \\n 字符。
     调用方须先 yield `reset` 事件，前端收到后清空已渲染的半截 AI 内容，
-    避免半截 AI 段落与完整 preset 段落首尾拼接。
+    避免半截 AI 字符与完整 preset 字符首尾拼接。
     """
-    preset = get_preset(abbr, style)
+    preset = get_preset(abbr, style, tradition)
     if preset is None:
         return _sse("error", {
             "code": "STORY_DISABLED",
@@ -394,7 +502,11 @@ def _preset_sse(abbr: str, style: str, reason: str, *, elapsed: float = 0.0) -> 
         })
     frames = [_sse("title", {"title": preset["title"]})]
     for i, para in enumerate(preset["paragraphs"]):
-        frames.append(_sse("paragraph", {"index": i, "text": para}))
+        if i > 0:
+            frames.append(_sse("char", {"char": "\n"}))
+            frames.append(_sse("char", {"char": "\n"}))
+        for ch in para:
+            frames.append(_sse("char", {"char": ch}))
     frames.append(_sse("done", {
         "ok": True,
         "abbr": abbr,
@@ -409,34 +521,47 @@ def _preset_sse(abbr: str, style: str, reason: str, *, elapsed: float = 0.0) -> 
     return "".join(frames)
 
 
+# 向后兼容旧测试 — _preset_sse 已重命名为 _preset_chars_sse（P2-16）
+_preset_sse = _preset_chars_sse
+
+
 @router.post("/stream")
 async def post_story_stream(
     body: StoryRequest,
     request: Request,
     cache_bust: int = Header(0, alias="Cache-Bust"),
 ):
-    """SSE 真流式（spec §4.6 + AgentArts v0.3）。
+    """SSE 字符级真流式（P2-16）。
 
-    事件流：title → paragraph ×N → done（缓存命中走一次性 yield）。
-    降级时先发 `reset`（P0-3：前端清空半截内容）再发 preset 全量。
+    事件流：title → char ×N → done。
+    - title：AI 输出首个 \\n 时一次性发出（先 clean_markdown 再剥前缀，与
+      parse_story_text 算法对齐，避免流式/非流式产生不同结果）。
+    - char：title 之后每个字符（含 \\n）逐字 yield event:char，
+      AI 推多快前端就显示多快（不人为节流）。\\n 自然换行、\\n\\n 自然段间距。
+    - done：缓存命中 / 成功生成后写完 cache 后 yield。
+    - reset + char ×N + done：失败 / 熔断时降级路径。
+    - 缓存命中与降级 preset 也走 char 事件，前端一套渲染逻辑。
 
-    缓存未命中时通过 `chat_stream` + queue 桥接实现真流式：
-    - chat_stream 是 async generator，逐 message event 调同步 on_delta
-    - on_delta 把增量推入 asyncio.Queue
-    - async generator 从 queue 消费增量，检测 `\n\n` 边界后 yield 事件
+    桥接：chat_stream 同步 on_delta → asyncio.Queue → async generator。
     """
     _check_rate_limit(request)  # P1-10
-    abbr, style = _check_request(body)
+    abbr, style, requested_tradition = _check_request(body)
     bust = bool(body.cacheBust) or cache_bust == 1
 
     async def _events() -> AsyncIterator[str]:
+        # P2-12：先解析 tradition（显式 > 首命中），缓存 key 三维
+        trad = _resolve_tradition(abbr, requested_tradition)
         # 缓存命中：一次性 yield（缓存本来就是同步数据）
         if not bust:
-            cached = _cache_get(abbr, style)
+            cached = _cache_get(trad, abbr, style)
             if cached is not None:
                 yield _sse("title", {"title": cached["title"]})
                 for i, para in enumerate(cached["paragraphs"]):
-                    yield _sse("paragraph", {"index": i, "text": para})
+                    if i > 0:
+                        yield _sse("char", {"char": "\n"})
+                        yield _sse("char", {"char": "\n"})
+                    for ch in para:
+                        yield _sse("char", {"char": ch})
                 meta = {k: v for k, v in cached.items() if k not in ("title", "paragraphs")}
                 meta["cached"] = True
                 # P1-11：命中耗时 ≈0，首次生成耗时挪到 origin_latency_ms
@@ -448,10 +573,10 @@ async def post_story_stream(
         # P1-9：熔断开启（冷却期内）→ 直接 preset，不让请求干等超时
         if not _BREAKER.allow():
             yield _sse("reset", {})
-            yield _preset_sse(abbr, style, "AI_CIRCUIT_OPEN")
+            yield _preset_chars_sse(abbr, style, "AI_CIRCUIT_OPEN", tradition=trad)
             return
 
-        system_prompt, user_prompt, fallback_title = _build_prompt(abbr, style)
+        system_prompt, user_prompt, fallback_title = _build_prompt(abbr, style, trad)
         provider = make_provider()
         start = time.time()
         deadline = start + STORY_TOTAL_TIMEOUT  # P1-7：端到端总预算
@@ -476,32 +601,65 @@ async def post_story_stream(
 
         chat_task = asyncio.create_task(_run_chat())
 
+        # P2-16：字符级状态机
+        # - title_buf：收集首段首行（遇到首个 \n 才发 title）
+        # - body_text：title 之后逐字符累积（用于成功后按 \n\n 切段落写缓存）
         title_emitted = False
-        paragraph_idx = 0
         title = ""
-        body_paragraphs: list[str] = []
-        buffer = ""
+        title_buf = ""
+        body_text = ""
 
-        async def _emit_chunk(chunk: str) -> AsyncIterator[str]:
-            """flush 一个完整段；首个段的首行为标题（P0-2 与 parse_story_text 同算法）。"""
-            nonlocal title_emitted, title, paragraph_idx
-            t = chunk.strip()
-            if not t:
-                return
+        def _consume(chunk: str) -> list[str]:
+            """消费一段 AI delta，产出 SSE 帧列表。同步函数便于 hot path 复用。
+
+            title 未发时：累积 title_buf；遇到首个 \\n 才切出 title + 进入 body 流。
+            title 已发时：把 chunk 每个字符逐字 yield event:char。
+            """
+            nonlocal title_emitted, title, title_buf, body_text
+            frames: list[str] = []
             if not title_emitted:
-                first_line, _, rest = t.partition("\n")
-                title = _strip_title_prefix(first_line) or fallback_title
-                yield _sse("title", {"title": title})
-                title_emitted = True
-                rest_text = rest.strip()
-                if rest_text:
-                    yield _sse("paragraph", {"index": paragraph_idx, "text": rest_text})
-                    body_paragraphs.append(rest_text)
-                    paragraph_idx += 1
+                title_buf += chunk
+                if "\n" in title_buf:
+                    nl_idx = title_buf.index("\n")
+                    title_line = title_buf[:nl_idx]
+                    rest = title_buf[nl_idx + 1:]
+                    title = (
+                        _strip_title_prefix(clean_markdown(title_line))
+                        or fallback_title
+                    )
+                    frames.append(_sse("title", {"title": title}))
+                    title_emitted = True
+                    title_buf = ""
+                    for ch in rest:
+                        frames.append(_sse("char", {"char": ch}))
+                        body_text += ch
+                # else: 还没遇到 \n，继续累积
             else:
-                yield _sse("paragraph", {"index": paragraph_idx, "text": t})
-                body_paragraphs.append(t)
-                paragraph_idx += 1
+                for ch in chunk:
+                    frames.append(_sse("char", {"char": ch}))
+                    body_text += ch
+            return frames
+
+        def _finalize() -> list[str]:
+            """流结束时的 flush。
+
+            仅当 title_buf 有实际内容但始终没遇到 \\n（单行 AI 输出）才兜底发
+            title + body；空缓冲交由主流程失败检查接管（reset + preset）。
+            正常情况最后一个 delta 已经把字符 yield 完了，这里不做任何事。
+            """
+            nonlocal title_emitted, title, title_buf, body_text
+            frames: list[str] = []
+            if not title_emitted and title_buf.strip():
+                # 单行 AI 输出：fallback_title + 整段作为 body
+                # （对齐 parse_story_text「单行无正文」语义）
+                title = fallback_title
+                frames.append(_sse("title", {"title": title}))
+                title_emitted = True
+                body_text = clean_markdown(title_buf)
+                title_buf = ""
+                for ch in body_text:
+                    frames.append(_sse("char", {"char": ch}))
+            return frames
 
         timed_out = False
         client_gone = False
@@ -518,17 +676,11 @@ async def post_story_stream(
                     timed_out = True
                     break
                 if kind == "delta":
-                    buffer += str(payload)
-                    # 检测段落边界 `\n\n`：每次出现就把当前段 flush
-                    while "\n\n" in buffer:
-                        para, _, buffer = buffer.partition("\n\n")
-                        async for frame in _emit_chunk(para):
-                            yield frame
-                elif kind == "end":
-                    # 处理 buffer 末尾未配对的 `\n\n` 段
-                    async for frame in _emit_chunk(buffer):
+                    for frame in _consume(str(payload)):
                         yield frame
-                    buffer = ""
+                elif kind == "end":
+                    for frame in _finalize():
+                        yield frame
                     break
         except (asyncio.CancelledError, GeneratorExit):
             # P1-8：客户端断连（生成器被关闭）——取消上游 AI 调用，
@@ -552,18 +704,27 @@ async def post_story_stream(
 
         # 失败处理：AI 抛异常 / 总超时 / 无有效输出 → reset + preset 降级
         exc = chat_state["exc"]
-        if timed_out or exc is not None or not title_emitted or not body_paragraphs:
+        if timed_out or exc is not None or not title_emitted:
             if timed_out:
                 reason = "AI_PROVIDER_TIMEOUT"
             else:
                 reason = _classify_reason(exc) if isinstance(exc, Exception) else "AI_PROVIDER_5XX"
             _BREAKER.record_failure()
             yield _sse("reset", {})  # P0-3
-            yield _preset_sse(abbr, style, reason, elapsed=time.time() - start)
+            yield _preset_chars_sse(abbr, style, reason, elapsed=time.time() - start,
+                                    tradition=trad)
             return
 
-        # 成功路径：写缓存 + yield done
+        # 成功路径：把 body_text 按 \n\n 切段落，组装 payload 写缓存
         _BREAKER.record_success()
+        body_paragraphs = [p for p in body_text.split("\n\n") if p.strip()]
+        # P2-14：字数/段落数软校验——只记日志，不阻断
+        total_chars = sum(len(p) for p in body_paragraphs)
+        if len(body_paragraphs) < 2 or total_chars < 150:
+            logger.warning(
+                "story stream output short: abbr=%s style=%s paras=%d chars=%d",
+                abbr, style, len(body_paragraphs), total_chars,
+            )
         payload = {
             "ok": True,
             "abbr": abbr,
@@ -576,7 +737,7 @@ async def post_story_stream(
             "cached": False,
             "degraded": False,
         }
-        _cache_put(abbr, style, payload)
+        _cache_put(trad, abbr, style, payload)
         meta = {k: v for k, v in payload.items() if k not in ("title", "paragraphs")}
         yield _sse("done", meta)
 

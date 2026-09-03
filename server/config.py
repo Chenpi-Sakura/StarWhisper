@@ -42,10 +42,15 @@ ASTROMETRY_TIMEOUT = int(os.getenv("ASTROMETRY_TIMEOUT", "60"))
 
 # M2: AI Provider 抽象层配置（spec §5.1 / §5.5）。
 # AI_API_KEY 留空时 providers.ai_provider.make_provider() 返回 DisabledProvider，
-# 路由层降级到 preset_stories.json。
+# 路由层降级到 traditions/{key}/{abbr}.json 内嵌 stories 预设（P2-17：原
+# preset_stories.json 已删除）。
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_API_BASE = os.getenv("AI_API_BASE", "https://api.deepseek.com/v1")
 AI_MODEL = os.getenv("AI_MODEL", "deepseek-chat")
+
+# P2-13：故事 prompt 中星点截断上限（按星等取最亮 N 颗；
+# 轩辕 70 星全塞会明显膨胀 token）。<=0 表示不截断。
+STORY_PROMPT_MAX_STARS = int(os.getenv("STORY_PROMPT_MAX_STARS", "12"))
 
 # M2.5: AgentArts 智能体运行时（spec 2026-08-24-starwhisper-agentarts.md）。
 # 四项全非空时 make_provider() 优先返回 AgentArtsProvider（工作负载身份 AK/SK 签名）。
@@ -57,7 +62,6 @@ OPEN_METEO_URL = os.getenv(
 OPEN_METEO_TIMEOUT = float(os.getenv("OPEN_METEO_TIMEOUT", "10"))
 
 AGENTARTS_API_KEY = os.getenv("AGENTARTS_API_KEY", "")
-AGENTARTS_AGENT_ID = os.getenv("AGENTARTS_AGENT_ID", "")
 AGENTARTS_RUNTIME_NAME = os.getenv("AGENTARTS_RUNTIME_NAME", "")
 AGENTARTS_BASE_URL = os.getenv("AGENTARTS_BASE_URL", "")
 

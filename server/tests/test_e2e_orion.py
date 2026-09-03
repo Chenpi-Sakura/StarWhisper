@@ -17,6 +17,11 @@ from fastapi.testclient import TestClient
 from main import app
 
 
+# E2E 测试 — 真实上游调用（mock 模式下也要走完整 fixtures + WCS 投影），
+# 单测试 3-10s。日常跳过；CI 全量跑用 `pytest -m ""`。
+pytestmark = pytest.mark.integration
+
+
 @pytest.fixture(scope='module')
 def client():
     return TestClient(app)

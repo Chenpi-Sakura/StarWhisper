@@ -18,10 +18,10 @@ export async function streamStory(
   onEvent: (ev: StoryStreamEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  // 真 SSE：后端逐段 yield。Vue reactivity 是异步批量更新——若同步连改多个
-  // ref（同一 microtask），浏览器只会渲染最后一次结果。所以每个事件回调后
-  // await 一个 microtask，让 Vue 能 flush 一次重渲染，前端才会看到逐段出来。
-  // 后端事件间隔本身就是 1-2 秒（AI 生成节奏），这个 microtask hop 不增加可见延迟。
+  // P2-16：字符级 SSE——同一 read() 内可能塞多个事件（典型 AI 流），交给 Vue
+  // 自然 microtask flush 即可；下一次 await reader.read() 之间浏览器必 flush。
+  // 原 paragraph-level 协议下每个事件手动 await setTimeout(0) 是为了逐段可见；
+  // 现在单 char 不需要 hop（人眼看不见单个字），hop 反而成性能瓶颈（200+ 字/篇）。
   const r = await fetch('/api/story/stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -44,10 +44,7 @@ export async function streamStory(
     buf = frames.pop() ?? ''
     for (const frame of frames) {
       const ev = parseSSE(frame)
-      if (!ev) continue
-      onEvent(ev)
-      // 让 Vue 重渲染一次（microtask hop）
-      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+      if (ev) onEvent(ev)
     }
   }
   // 处理 buffer 末尾不完整帧
@@ -65,9 +62,8 @@ function parseSSE(frame: string): StoryStreamEvent | null {
   const type = (evLine?.[1] ?? '').trim()
   const data = JSON.parse(dataLine[1].trim()) as Record<string, unknown>
   if (type === 'title') return { type: 'title', title: String(data.title ?? '') }
-  if (type === 'paragraph') {
-    return { type: 'paragraph', index: Number(data.index ?? 0), text: String(data.text ?? '') }
-  }
+  // P2-16：字符级事件——逐字 char 流入前端
+  if (type === 'char') return { type: 'char', char: String(data.char ?? '') }
   if (type === 'done') return { type: 'done', meta: data as unknown as StoryResponse }
   if (type === 'reset') return { type: 'reset' }
   if (type === 'error') return { type: 'error', message: String(data.message ?? '') }

@@ -88,7 +88,7 @@ describe('StoryPanel 三态', () => {
     vi.spyOn(story, 'fetchStoryStream').mockResolvedValue(sampleStory)
     story.streaming = true
     story.streamTitle = ''
-    story.streamParagraphs = []
+    story.streamText = ''
     story.current = null
     const wrapper = mount(StoryPanel, { props: { abbr: 'ori' } })
     await wrapper.vm.$nextTick()
@@ -101,7 +101,7 @@ describe('StoryPanel 三态', () => {
     vi.spyOn(story, 'fetchStoryStream').mockResolvedValue(sampleStory)
     story.streaming = true
     story.streamTitle = '流式标题'
-    story.streamParagraphs = [{ index: 0, text: '流式第一段' }]
+    story.streamText = '\n流式第一段'
     story.current = null
     const wrapper = mount(StoryPanel, { props: { abbr: 'ori' } })
     await wrapper.vm.$nextTick()
@@ -116,7 +116,7 @@ describe('StoryPanel 三态', () => {
     story.current = { ...sampleStory, abbr: 'cyg' }  // 上一个星座
     story.streaming = true
     story.streamTitle = ''
-    story.streamParagraphs = []
+    story.streamText = ''
     const wrapper = mount(StoryPanel, { props: { abbr: 'ori' } })
     await wrapper.vm.$nextTick()
     // 旧星座内容不得渲染

@@ -15,6 +15,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "server" / "data" / "traditions" / "chinese"
 SCRIPT = ROOT / "server" / "scripts" / "enrich_chinese_lines.py"
@@ -69,6 +71,7 @@ def test_shen_xiu_reused_western_bayer_edges():
     assert not missing, f"参宿缺 Bayer 复用边：{missing}"
 
 
+@pytest.mark.integration
 def test_enrich_script_is_idempotent():
     """跑两次 enrich_chinese_lines.py 不应让任何文件的边数翻倍。"""
     # 先 snapshot
@@ -94,6 +97,7 @@ def test_enrich_script_is_idempotent():
     assert not changed, f"第二次跑 enrich 改了 {len(changed)} 个文件：{changed[:5]}"
 
 
+@pytest.mark.integration
 def test_enrich_dry_run_does_not_modify_files():
     """--dry-run 不应改任何文件。"""
     before = {}
@@ -116,6 +120,7 @@ def test_enrich_dry_run_does_not_modify_files():
     assert not changed, f"dry-run 改了文件：{changed}"
 
 
+@pytest.mark.integration
 def test_build_chinese_preserves_existing_stories():
     """build_chinese_stars.py 重跑不应清空已填好的 stories（309 星官内容）。"""
     # 先 snapshot stories 内容

@@ -43,21 +43,24 @@ server/                  FastAPI + Python 3.11+ + pytest
     astrometry.py        WCS 投影（astropy）
     traditions.py        多 tradition 星表 + find_nearest + build_star_catalog
     jpeg_recompress.py   公网 ≤4MB 约束的服务端 PIL libjpeg 自适应重压
-    ai_provider.py       OpenAI 兼容 + AgentArts 双 provider
-    story_fallback.py    AI 不可用时的离线预设故事
+    ai_provider.py       OpenAI 兼容 + AgentArts 双 provider（含真流式 SSE）
+    story_fallback.py    AI 不可用时的离线预设（按 tradition 取 traditions 内嵌 brief）
     constellation.py     星座详情
-  data/                  constellations.json + fixtures
-  tests/                 pytest（26 个用例：identify + jpeg_recompress + traditions + e2e）
+    weather.py           Open-Meteo 观星指数四档（优/良/一般/差）
+  data/                  traditions/{western,chinese}/<abbr>.json + fixtures
+  tests/                 pytest（72 个用例：identify + jpeg_recompress + traditions
+                         + story + e2e — story 覆盖 P0/P1/P2 全部修复路径）
 
 web/                     Vue 3 + Vite + TS + Pinia + vitest + jsdom
   src/
-    stores/scan.ts       选图 + solve() 主流程
-    views/               ScanView / ConstellationView / StoryView
-    components/          StarCanvas（overlay 像素映射 + 动画）
-    api/solve.ts         fetch 封装（AbortSignal.timeout 65s）
+    stores/              scan / atlas / story（fetchStoryStream 真 SSE）
+    views/               ScanView / ConstellationView
+    components/          StarCanvas（overlay + atlas 三模式）/ StoryPanel / AtlasStoryStatic
+                         / AtlasTraditionTabs / common（PlateBox/StarBtn/StarChip）
+    api/                 solve.ts / story.ts（streamStory）/ health.ts / atlas.ts
     utils/               exif / heic
   public/samples/        离线 mock fixture + 样图
-  tests/                 vitest（72 个用例）
+  tests/                 vitest（123 个用例，覆盖 store/router/组件三类）
 ```
 
 ---
@@ -143,19 +146,33 @@ pnpm build               # vue-tsc --noEmit + vite build
 ### AI 故事流
 
 `server/services/ai_provider.py` 抽象层：
-- `AgentArtsProvider`（华为云智能体，AK/SK 签名）
-- `OpenAICompatibleProvider`（DeepSeek 等）
-- 都没配时 `DisabledProvider` 兜底 → `story_fallback.py` 离线预设
+- `AgentArtsProvider`（华为云智能体运行时，API Key Bearer 鉴权；body 用 `{"inputs":{"query":"..."}}`；平台仅 `query` 入参，P2-1 修复把 system prompt 拼进 query）
+- `OpenAICompatibleProvider`（DeepSeek / OpenAI 等统一走 `/chat/completions`；含 P1-6 真流式 SSE 解析）
+- 都没配时 `DisabledProvider` 兜底 → `story_fallback.py` 从 traditions 内嵌 brief 取预设
 
-路由 `server/routers/story.py` 是 SSE 流式响应。
+路由 `server/routers/story.py`：
+- `POST /api/story` 非流式（向后兼容）
+- `POST /api/story/stream` SSE 真流式；事件 `title` / `paragraph` / `done` / `reset` / `error`
+- AI 降级触发 `reset` 事件清空半截内容后再发 preset 全量（P0-3）
+- 缓存 key `(tradition, abbr, style)`，degraded:true 不写缓存（spec §5.4 / §16.4）
 
 ---
 
 ## 测试基础设施
 
-- 后端 26 测试：identify 14 + jpeg_recompress 12 + 各种 router/service 单元
-- 前端 72 测试：jsdom + setup polyfill（URL.createObjectURL）
+- 后端 72 测试：identify + jpeg_recompress + traditions + story (P0/P1/P2 全覆盖) + e2e
+- 前端 123 测试：jsdom + setup polyfill（URL.createObjectURL）
 - e2e：test1/test2/test3 三张真实星图（`assets/test*.jpg`），test1 是 D610 MPO 24MP 长焦样图
+
+### 故事组件关键事实（P0/P1/P2 之后）
+
+- `POST /api/story/stream` 是唯一生产前端走的接口，`POST /api/story` 非流式保留向后兼容
+- 端到端总时长预算：`STORY_TOTAL_TIMEOUT`（默认 45s）；前端 `STORY_STREAM_TIMEOUT_MS`（60s 兜底）
+- 流式降级流程：AI 失败 → 先发 `reset` 清空半截内容 → 再 yield preset 全量
+- 缓存三维 key：`(tradition, abbr, style)`；degraded:true 不写缓存
+- 熔断（`STORY_CB_THRESHOLD` 连续失败 + `STORY_CB_COOLDOWN`）：冷却期内直接 preset 跳过 AI
+- 限流（`STORY_RATE_LIMIT`/WINDOW 按客户端 IP）：超限返 429 `RATE_LIMITED`
+- 调试期产物：报告 `docs/fix-notes/2026-09-03-story-component-review.md`
 
 跑单个 e2e 验证（需启真实上游）：
 ```bash

@@ -105,5 +105,5 @@ npm test -- --run
 ## 6. 已知限制
 
 - **M2 仅覆盖猎户座真解**：其余 4 星座（cyg / sco / leo / and）的 RA/Dec 待 M2.5 补全，图鉴可显示但扫描不命中。
-- **AI 故事默认降级**：未配置 `AI_API_KEY` 时走 `preset_stories.json` 降级（`degraded:true`），需配置 DeepSeek / 字节 API Key 才能验证真实 LLM 生成。
+- **AI 故事默认降级**：未配置 `AI_API_KEY` 时走 traditions 内嵌 brief 降级（`degraded:true`），需配置 DeepSeek / 字节 API Key 才能验证真实 LLM 生成。T7 已将 stories 内嵌到各 constellation JSON，不存在独立 `preset_stories.json`。
 - **HEIC 转码质量**：pillow-heif 重编码 q95，极少数极端 HEIC 文件可能解码失败返 422 `HEIC_DECODE_FAILED`。

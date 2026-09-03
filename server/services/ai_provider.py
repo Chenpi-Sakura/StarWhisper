@@ -28,7 +28,6 @@ from config import (
     AI_API_BASE,
     AI_API_KEY,
     AI_MODEL,
-    AGENTARTS_AGENT_ID,
     AGENTARTS_API_KEY,
     AGENTARTS_BASE_URL,
     AGENTARTS_RUNTIME_NAME,
@@ -234,14 +233,12 @@ class AgentArtsProvider(AIProvider):
         api_key: str,
         base_url: str,
         runtime_name: str,
-        agent_id: str = "",
         name: str = "agentarts",
     ) -> None:
         self.name = name
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
         self._runtime_name = runtime_name
-        self._agent_id = agent_id
         if AgentArtsProvider._CLIENT is None:
             # truststore 让 Python 走系统 trust store（Windows cert store），
             # 等价于 curl 用 Schannel；避免依赖 certifi 自带 CA bundle（会缺
@@ -400,7 +397,6 @@ def make_provider() -> AIProvider:
             api_key=AGENTARTS_API_KEY,
             base_url=AGENTARTS_BASE_URL,
             runtime_name=AGENTARTS_RUNTIME_NAME,
-            agent_id=AGENTARTS_AGENT_ID,
         )
     if AI_API_KEY:
         return OpenAICompatibleProvider(

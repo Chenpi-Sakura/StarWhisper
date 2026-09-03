@@ -22,6 +22,11 @@ ASSETS = Path(__file__).resolve().parents[2] / 'assets'
 BAYER_INDEX = None  # T7: bayer_index.json 已删；改为从 traditions 取者户 8 颗 bayer。
 
 
+# E2E 真实样图 — 走样图 PIl 解码 + mock 上游 + WCS 投影，单测试 5-10s。
+# 仅 test_assets_files_exist 是文件存在性检查（<100ms），不归入 integration。
+pytestmark = pytest.mark.integration
+
+
 @pytest.fixture(scope='module')
 def client() -> TestClient:
     return TestClient(app)

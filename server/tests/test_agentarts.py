@@ -317,8 +317,9 @@ def _reset_story_cache():
     _clear_cache()
 
 
-def test_stream_sse_title_paragraph_done(monkeypatch):
-    """SSE 流：title → paragraph ×N → done。"""
+def test_stream_sse_title_char_done(monkeypatch):
+    """P2-16 字符级 SSE 流：title → char ×N → done。"""
+    import json as _json
     import routers.story as story_mod
 
     monkeypatch.setattr(story_mod, "make_provider", lambda: _MockSuccessProvider())
@@ -328,10 +329,23 @@ def test_stream_sse_title_paragraph_done(monkeypatch):
         assert r.status_code == 200
         text = r.read().decode("utf-8")
     assert "event: title" in text
-    assert "event: paragraph" in text
+    assert "event: char" in text
     assert "event: done" in text
-    # T7: preset 来源改为 traditions 内嵌 brief；内容含“永不相见”典故
-    assert "永不相见" in text
+    # P2-16：字符级协议下 char 事件单个字符一个 JSON 帧；
+    # 把所有 char 事件的 data 解析出来再断言内容（preset 含"永不相见"典故）
+    char_text_parts: list[str] = []
+    for frame in text.split("\n\n"):
+        for line in frame.split("\n"):
+            if line.startswith("data:"):
+                try:
+                    obj = _json.loads(line[len("data:"):].strip())
+                    if "char" in obj:
+                        char_text_parts.append(obj["char"])
+                except _json.JSONDecodeError:
+                    pass
+    body_text = "".join(char_text_parts)
+    # T7: preset 来源改为 traditions 内嵌 brief；内容含"永不相见"典故
+    assert "永不相见" in body_text
 
 
 def test_stream_sse_invalid_abbr_returns_404(monkeypatch):
