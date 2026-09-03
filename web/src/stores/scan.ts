@@ -17,6 +17,16 @@ export type ScanStatus =
 const MAX_SIZE = 20 * 1024 * 1024
 const ALLOWED_TYPES = ['image/jpeg', 'image/png'] as const
 
+/** 简单 UUID v4——避免引入 crypto.randomUUID（jsdom 中不可用）。
+ *  每次 solve 成功生成新 id，写入 solveId 触发 StoryPanel watcher。 */
+function _uuid(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
 export const useScanStore = defineStore('scan', () => {
   const status = ref<ScanStatus>('idle')
   const imageFile = ref<File | null>(null)
@@ -31,6 +41,9 @@ export const useScanStore = defineStore('scan', () => {
    *  constellation 列表。理由：astrometry 与 tradition 无关，切 tradition
    *  不应触发 20s 重解。 */
   const lockedTradition = ref<string>('')
+  /** photo-level 故事触发键——每次 solve 成功生成新 uuid，StoryPanel watch 它触发 fetchPhotoStory。
+   *  切 chip / 切 style 都不刷新此键，故不触发新故事。 */
+  const solveId = ref<string | null>(null)
   const loading = computed(() => status.value === 'uploading')
 
   let abortController: AbortController | null = null
@@ -104,6 +117,8 @@ export const useScanStore = defineStore('scan', () => {
       } else {
         const constellations = data.constellations ?? []
         status.value = constellations.length > 0 ? 'done' : 'empty'
+        // 新 solveId 触发 StoryPanel watcher；旧 id 不复用（确保每次成功都是新触发）
+        solveId.value = _uuid()
       }
     } catch (err: unknown) {
       if (cancelledByUser) {
@@ -167,6 +182,7 @@ export const useScanStore = defineStore('scan', () => {
     errorMessage,
     selectedStyle,
     lockedTradition,
+    solveId,
     loading,
     selectImage,
     solve,

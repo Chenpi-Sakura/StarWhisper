@@ -41,10 +41,14 @@ describe('fetchStoryStream SSE 字符级聚合（P2-16）', () => {
       'event: char\ndata: {"char":"段"}',
       `event: done\ndata: ${JSON.stringify(sampleMeta)}`,
     ]
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeSSEResponse(frames)))
+    const fetchMock = vi.fn().mockResolvedValue(makeSSEResponse(frames))
+    vi.stubGlobal('fetch', fetchMock)
 
     const story = useStoryStore()
     await story.fetchStoryStream('ori', 'myth', 'fresh')
+    // C1：atlas 流路径必须 POST /api/atlas-story/stream（与 spec §3.2 一致）。
+    // /api/story/stream 在 Task 2 已被删除，URL 漂移会触发 404。
+    expect(fetchMock).toHaveBeenCalledWith('/api/atlas-story/stream', expect.objectContaining({ method: 'POST' }))
     expect(story.current).toEqual(sampleMeta)
     expect(story.streamTitle).toBe('猎户神话')
     expect(story.streamText).toBe('\n第一段\n\n第二段')

@@ -36,8 +36,10 @@ const streamStoryMock = vi.fn((_req: unknown, onEvent: (ev: unknown) => void) =>
 const postStoryMock = vi.fn(() => Promise.resolve({ ok: true, abbr: 'ori', style: 'myth', title: '', paragraphs: [], provider: 'disabled', model: 'preset', latency_ms: 0, cached: false, degraded: true }))
 vi.mock('../src/api/story', () => ({
   streamStory: streamStoryMock,
+  streamPhotoStory: streamStoryMock,
   postStory: postStoryMock,
   getHealth: () => Promise.resolve({ ok: true, astrometry: 'mock' as const, ai_provider: 'disabled' as const, ai_model: 'mock' }),
+  STORY_STREAM_TIMEOUT_MS: 60_000,
 }))
 
 beforeEach(() => {

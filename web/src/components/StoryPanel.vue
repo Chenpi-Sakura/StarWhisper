@@ -1,74 +1,84 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 
 import { useScanStore } from '../stores/scan'
 import { useStoryStore } from '../stores/story'
-import type { StoryStyle } from '../types'
+import type { PhotoConstellation, PhotoStar, PhotoStoryContext } from '../types'
 
 const scan = useScanStore()
 const story = useStoryStore()
 
-const props = defineProps<{ abbr: string }>()
+// 本期（spec §4.1）：不再有 abbr prop / 视角 tabs；
+// 触发键 = scanStore.solveId（每次新 solve 完成刷新一次）。
 
-/** 视角 tab（神话 / 科普）— 后端 style 字段 */
-const views: { value: StoryStyle; label: string }[] = [
-  { value: 'myth', label: '神话视角' },
-  { value: 'science', label: '科普视角' },
-]
-
-const state = computed<'loading' | 'degraded' | 'ready'>(() => {
-  if (story.error || story.streamError) return 'degraded'
-  // P2-16：字符级流式——已有内容（任意 char / title）即进 ready（打字机）。
-  // 还没有任何内容时仍先出骨架屏（首屏白闪规避）。
-  const hasStreamContent = Boolean(story.streamTitle) || story.streamText.length > 0
-  if (story.streaming) return hasStreamContent ? 'ready' : 'loading'
-  if (
-    story.current &&
-    story.current.abbr === props.abbr &&
-    story.current.style === scan.selectedStyle
-  ) {
-    return 'ready'
-  }
+const state = computed<'loading' | 'error' | 'ready'>(() => {
+  if (story.error || story.streamError) return 'error'
+  const hasContent = Boolean(story.streamTitle) || story.streamText.length > 0
+  if (story.streaming) return hasContent ? 'ready' : 'loading'
+  // streamText 已有内容（流已结束但 store 还没清空）→ 视为 ready，
+  // 即便后端 done 事件载荷缺 style 字段也不应该回退到 loading。
+  if (hasContent) return 'ready'
+  if (story.current && story.current.style === scan.selectedStyle) return 'ready'
   return 'loading'
 })
 
-// P2-16 字符级：流式时把 streamText（单字符串含 \n）一次性渲染；缓存命中则用
-// current.paragraphs 拼回（段落间补 \n\n，与服务端 yield 一致）。
 const displayTitle = computed(() => story.streamTitle || story.current?.title || '')
 const displayText = computed(() => {
   if (story.streamText.length > 0) return story.streamText
-  const paras = story.current?.paragraphs
-  return paras && paras.length > 0 ? paras.join('\n\n') : ''
+  // I1：缓存命中（refetch + style 匹配）时 streamText 为空，
+  // 但 current 里有完整 paragraphs；这里兜底让 UI 不会短暂空。
+  return story.current?.paragraphs?.join('\n\n') ?? ''
 })
 
+function buildContext(): PhotoStoryContext | null {
+  const r = scan.result
+  if (!r) return null
+  const constellations: PhotoConstellation[] = (r.constellations ?? []).map((c) => ({
+    abbr: c.abbr,
+    tradition: (c.tradition ?? 'western') as 'western' | 'chinese',
+    name: c.name,
+    latin: c.latin,
+    confidence: c.confidence,
+  }))
+  const bright_stars: PhotoStar[] = (r.stars_overlay ?? []).map((s) => ({
+    bayer: s.bayer,
+    name: s.name,
+    name_zh: s.name_zh,
+    magnitude: s.magnitude,
+    // Task 5 review ruling：s.constellations 是 optional，必须 ?? [] 兜底防 narrowing trap
+    constellations: s.constellations ?? [],
+  }))
+  return {
+    constellations,
+    bright_stars,
+    // SolveResult 用 ra/dec 直接平铺（spec §3.1）+ field_width/field_height（snake_case）
+    center: r.ra != null && r.dec != null ? { ra: r.ra, dec: r.dec } : undefined,
+    field: r.field_width != null && r.field_height != null
+      ? { width_deg: r.field_width, height_deg: r.field_height }
+      : undefined,
+  }
+}
+
 watch(
-  () => [props.abbr, scan.selectedStyle] as const,
-  async ([abbr, style]) => {
-    if (!abbr) return
+  () => scan.solveId,
+  async (sid) => {
+    if (!sid) return
+    const ctx = buildContext()
+    if (!ctx) return
     try {
-      await story.fetchStoryStream(abbr, style as StoryStyle, 'refetch')
+      await story.fetchPhotoStory(ctx, scan.selectedStyle, 'refetch')
     } catch (e) {
-      // 被更新的请求 abort（P0-5）属正常流程，静默；其余只记日志不上屏
       if ((e as Error).name !== 'AbortError') console.error('[StoryPanel]', e)
     }
   },
   { immediate: true },
 )
 
-async function onViewChange(view: StoryStyle) {
-  // 只改 scan.selectedStyle；watch 会随后自动触发 fetchStoryStream refetch。
-  if (!props.abbr) return
-  scan.setStyle(view)
-}
-
 async function onRefresh() {
-  if (!props.abbr) return
+  const ctx = buildContext()
+  if (!ctx) return
   try {
-    await story.fetchStoryStream(
-      props.abbr,
-      scan.selectedStyle,
-      'fresh',
-    )
+    await story.fetchPhotoStory(ctx, scan.selectedStyle, 'fresh')
   } catch (e) {
     if ((e as Error).name !== 'AbortError') console.error('[StoryPanel]', e)
   }
@@ -77,16 +87,8 @@ async function onRefresh() {
 
 <template>
   <section class="story-panel">
-    <!-- 视角 vtabs -->
+    <!-- 本期：仅 refresh tab（spec §4.1：style tabs 移除） -->
     <div class="vtabs">
-      <button
-        v-for="v in views"
-        :key="v.value"
-        class="vtab"
-        :class="{ active: scan.selectedStyle === v.value }"
-        type="button"
-        @click="onViewChange(v.value)"
-      >{{ v.label }}</button>
       <button
         class="vtab refresh"
         :disabled="story.loading || story.streaming"
@@ -95,20 +97,13 @@ async function onRefresh() {
       >↻ 重新讲述</button>
     </div>
 
-    <!-- P2-16 字符级：单 div + white-space: pre-wrap 把 \n 自然渲染成换行、\n\n
-         成段间距；保持原 text-align/line-height/font 视觉风格。 -->
     <article v-if="state === 'ready'" class="ready" data-testid="story-ready">
       <h2>{{ displayTitle }}</h2>
       <div class="story-body">{{ displayText }}</div>
-      <p
-        v-if="story.current?.degraded"
-        class="badge-offline"
-        :title="story.current.degraded_reason ?? ''"
-      >离线故事</p>
     </article>
 
-    <div v-else-if="state === 'degraded'" class="degraded" data-testid="story-degraded">
-      <p>故事生成暂不可用：{{ story.error || story.streamError }}</p>
+    <div v-else-if="state === 'error'" class="error" data-testid="story-error">
+      <p>故事暂不可用：{{ story.error || story.streamError }}</p>
       <button @click="onRefresh">重试</button>
     </div>
 
@@ -209,7 +204,7 @@ async function onRefresh() {
   width: 60%;
 }
 
-.degraded {
+.error {
   margin-top: 14px;
   padding: 16px 18px;
   border: 1px solid rgba(156, 59, 42, 0.45);

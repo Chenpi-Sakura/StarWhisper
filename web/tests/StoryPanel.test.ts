@@ -3,124 +3,165 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
 import StoryPanel from '../src/components/StoryPanel.vue'
+import { useScanStore } from '../src/stores/scan'
 import { useStoryStore } from '../src/stores/story'
-import type { StoryResponse } from '../src/types'
 
 beforeEach(() => setActivePinia(createPinia()))
 
-const sampleStory: StoryResponse = {
-  ok: true, abbr: 'ori', style: 'myth', title: '猎户神话',
-  paragraphs: ['第一段', '第二段'],
-  provider: 'mock', model: 'm', latency_ms: 10,
-  cached: false, degraded: false,
+const sampleSolve = {
+  ok: true, solved: true, ra: 84, dec: -1, constellations: [
+    { abbr: 'ori', name: '猎户座', latin: 'Orion', confidence: 0.9, tradition: 'western' as const,
+      total_bright_stars: 8 },
+  ],
+  stars_overlay: [],
+  overlay_lines: [],
+  image_width: 100, image_height: 100,
 }
 
-describe('StoryPanel 三态', () => {
-  it('loading 渲染 skeleton', async () => {
+describe('StoryPanel photo-level 触发', () => {
+  it('solveId 变化触发 fetchPhotoStory', async () => {
+    const scan = useScanStore()
     const story = useStoryStore()
-    vi.spyOn(story, 'fetchStoryStream').mockResolvedValue(sampleStory)
-    story.loading = true
-    const wrapper = mount(StoryPanel, { props: { abbr: 'ori' } })
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-testid="story-loading"]').exists()).toBe(true)
-  })
+    const spy = vi.spyOn(story, 'fetchPhotoStory').mockResolvedValue({
+      ok: true, abbr: '', style: 'myth', title: 'T', paragraphs: ['p'],
+      provider: 'mock', model: 'm', latency_ms: 0, cached: false, degraded: false,
+    })
 
-  it('ready 渲染段落列表', async () => {
-    const story = useStoryStore()
-    vi.spyOn(story, 'fetchStoryStream').mockResolvedValue(sampleStory)
-    story.current = sampleStory
-    const wrapper = mount(StoryPanel, { props: { abbr: 'ori' } })
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-testid="story-ready"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('猎户神话')
-  })
-
-  it('切换视角触发 fetchStoryStream refetch（仅一次，不并发）', async () => {
-    const story = useStoryStore()
-    const spy = vi.spyOn(story, 'fetchStoryStream').mockResolvedValue(sampleStory)
-    const wrapper = mount(StoryPanel, { props: { abbr: 'ori' } })
-    await wrapper.vm.$nextTick()
-    spy.mockClear()
-    // vtabs 第二个 = 科普视角
-    await wrapper.findAll('.vtab:not(.refresh)')[1].trigger('click')
-    // 等 watch 响应 + onViewChange 完成
+    scan.result = sampleSolve
+    scan.solveId = 'solve-1'
+    const wrapper = mount(StoryPanel)
     await wrapper.vm.$nextTick()
     await new Promise((r) => setTimeout(r, 0))
-    // 只调一次、且是 refetch（不是 fresh）：避免与 watch 并发两个流。
-    const calls = spy.mock.calls.filter(
-      (c) => c[0] === 'ori' && c[1] === 'science',
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({ constellations: expect.any(Array) }),
+      'myth', 'refetch',
     )
-    expect(calls).toHaveLength(1)
-    expect(calls[0][2]).toBe('refetch')  // action = refetch
   })
 
-  it('点击重新讲述触发 fresh fetch', async () => {
+  it('chip 切换不触发 fetchPhotoStory（activeAbbr 变化不影响）', async () => {
+    const scan = useScanStore()
     const story = useStoryStore()
-    const spy = vi.spyOn(story, 'fetchStoryStream').mockResolvedValue(sampleStory)
-    const wrapper = mount(StoryPanel, { props: { abbr: 'ori' } })
+    const spy = vi.spyOn(story, 'fetchPhotoStory').mockResolvedValue({
+      ok: true, abbr: '', style: 'myth', title: 'T', paragraphs: [],
+      provider: 'mock', model: 'm', latency_ms: 0, cached: false, degraded: false,
+    })
+
+    scan.result = sampleSolve
+    scan.solveId = 'solve-1'
+    const wrapper = mount(StoryPanel)
     await wrapper.vm.$nextTick()
+    await new Promise((r) => setTimeout(r, 0))
     spy.mockClear()
-    // 刷新按钮（vtab.refresh）
+
+    // 切 chip
+    scan.activeAbbr = 'cyg'
+    await wrapper.vm.$nextTick()
+    await new Promise((r) => setTimeout(r, 10))
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('点击"重新讲述"按钮触发 fresh', async () => {
+    const scan = useScanStore()
+    const story = useStoryStore()
+    const spy = vi.spyOn(story, 'fetchPhotoStory').mockResolvedValue({
+      ok: true, abbr: '', style: 'myth', title: 'T', paragraphs: [],
+      provider: 'mock', model: 'm', latency_ms: 0, cached: false, degraded: false,
+    })
+
+    scan.result = sampleSolve
+    scan.solveId = 'solve-1'
+    const wrapper = mount(StoryPanel)
+    await wrapper.vm.$nextTick()
+    await new Promise((r) => setTimeout(r, 0))
+    spy.mockClear()
+
     await wrapper.find('.vtab.refresh').trigger('click')
     await wrapper.vm.$nextTick()
-    await new Promise((r) => setTimeout(r, 0))
-    // 调用一次、action='fresh'
-    const calls = spy.mock.calls.filter(
-      (c) => c[0] === 'ori' && c[1] === 'myth',
-    )
-    expect(calls).toHaveLength(1)
-    expect(calls[0][2]).toBe('fresh')
+    expect(spy).toHaveBeenCalledWith(expect.anything(), 'myth', 'fresh')
   })
 
-  it('degraded 渲染降级提示 + 重试按钮', async () => {
+  it('error 状态显示"故事暂不可用" + 重试按钮', async () => {
+    const scan = useScanStore()
     const story = useStoryStore()
-    vi.spyOn(story, 'fetchStoryStream').mockResolvedValue(sampleStory)
-    story.streamError = 'HTTP 500'
-    story.current = null
-    const wrapper = mount(StoryPanel, { props: { abbr: 'ori' } })
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-testid="story-degraded"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('重试')
-  })
+    vi.spyOn(story, 'fetchPhotoStory').mockResolvedValue({
+      ok: true, abbr: '', style: 'myth', title: 'T', paragraphs: [],
+      provider: 'mock', model: 'm', latency_ms: 0, cached: false, degraded: false,
+    })
 
-  it('P0-4: 流式进行中但尚无内容 → 骨架屏（不再空白三分支落空）', async () => {
-    const story = useStoryStore()
-    vi.spyOn(story, 'fetchStoryStream').mockResolvedValue(sampleStory)
-    story.streaming = true
-    story.streamTitle = ''
+    story.streamError = 'AI 未配置'
+    story.streaming = false
     story.streamText = ''
+    story.streamTitle = ''
     story.current = null
-    const wrapper = mount(StoryPanel, { props: { abbr: 'ori' } })
+
+    const wrapper = mount(StoryPanel)
     await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-testid="story-loading"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="story-ready"]').exists()).toBe(false)
+
+    expect(wrapper.find('[data-testid="story-error"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('故事暂不可用')
   })
 
-  it('P0-4: 流式进行中已有首段 → 打字机渲染（不依赖 current）', async () => {
+  it('无 style tabs（本期移除神话/科普切换）', async () => {
+    const scan = useScanStore()
     const story = useStoryStore()
-    vi.spyOn(story, 'fetchStoryStream').mockResolvedValue(sampleStory)
-    story.streaming = true
-    story.streamTitle = '流式标题'
-    story.streamText = '\n流式第一段'
-    story.current = null
-    const wrapper = mount(StoryPanel, { props: { abbr: 'ori' } })
+    vi.spyOn(story, 'fetchPhotoStory').mockResolvedValue({
+      ok: true, abbr: '', style: 'myth', title: 'T', paragraphs: [],
+      provider: 'mock', model: 'm', latency_ms: 0, cached: false, degraded: false,
+    })
+
+    scan.result = sampleSolve
+    scan.solveId = 'solve-1'
+    const wrapper = mount(StoryPanel)
     await wrapper.vm.$nextTick()
+
+    // 只剩 refresh tab，没有 myth/science tab
+    const vtabs = wrapper.findAll('.vtab')
+    expect(vtabs.length).toBe(1)
+    expect(vtabs[0].classes()).toContain('refresh')
+  })
+
+  // 回归：流结束后 streamText 仍有内容时，state 必须保持 ready，
+  // 即便 current（done 事件载荷）的 style 与 selectedStyle 不一致也要可见。
+  // 修前 bug：依赖 current.style === scan.selectedStyle → 后端 done 载荷
+  // 只含 ok/degraded/provider/model/latency_ms/cached（无 style），
+  // 跌回 loading，用户看到「故事输出完后变空白」。
+  it('streamText 有内容时保持 ready（即便 current.style 不匹配）', async () => {
+    const scan = useScanStore()
+    const story = useStoryStore()
+    vi.spyOn(story, 'fetchPhotoStory').mockResolvedValue({
+      ok: true, abbr: '', style: 'myth', title: 'T', paragraphs: [],
+      provider: 'mock', model: 'm', latency_ms: 0, cached: false, degraded: false,
+    })
+
+    scan.result = sampleSolve
+    scan.solveId = 'solve-1'
+    const wrapper = mount(StoryPanel)
+    await wrapper.vm.$nextTick()
+
+    // 模拟流结束但 done 载荷不含 style：streamText 有全文，current 是裸 meta
+    story.streaming = false
+    story.streamTitle = '古天文'
+    story.streamText = '下客自起舞的古老回响。'
+    story.streamError = null
+    // current 故意写成缺 style 的 done meta（bug 现场的真实载荷）
+    story.current = {
+      ok: true,
+      abbr: '',
+      // style: undefined  ← 关键：后端 done 没发
+      title: '古天文',
+      paragraphs: [],
+      provider: 'agentarts',
+      model: '',
+      latency_ms: 15288,
+      cached: false,
+      degraded: false,
+    } as any
+
+    await wrapper.vm.$nextTick()
+    // 必须是 ready，不能因 style 缺失而跌回 loading
     expect(wrapper.find('[data-testid="story-ready"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('流式标题')
-    expect(wrapper.text()).toContain('流式第一段')
-  })
-
-  it('P0-4: 切星座时旧 current 不串台（current 已被 store 清空 → 骨架屏）', async () => {
-    const story = useStoryStore()
-    vi.spyOn(story, 'fetchStoryStream').mockResolvedValue(sampleStory)
-    story.current = { ...sampleStory, abbr: 'cyg' }  // 上一个星座
-    story.streaming = true
-    story.streamTitle = ''
-    story.streamText = ''
-    const wrapper = mount(StoryPanel, { props: { abbr: 'ori' } })
-    await wrapper.vm.$nextTick()
-    // 旧星座内容不得渲染
-    expect(wrapper.text()).not.toContain('猎户神话')
-    expect(wrapper.find('[data-testid="story-loading"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="story-loading"]').exists()).toBe(false)
+    expect(wrapper.find('.story-body').text()).toBe('下客自起舞的古老回响。')
   })
 })

@@ -1,8 +1,18 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-import type { StoryRequest, StoryResponse, StoryStyle } from '../types'
-import { postStory, STORY_STREAM_TIMEOUT_MS, streamStory } from '../api/story'
+import type {
+  PhotoStoryContext,
+  StoryRequest,
+  StoryResponse,
+  StoryStyle,
+} from '../types'
+import {
+  postStory,
+  STORY_STREAM_TIMEOUT_MS,
+  streamPhotoStory,
+  streamStory,
+} from '../api/story'
 
 export const useStoryStore = defineStore('story', () => {
   const current = ref<StoryResponse | null>(null)
@@ -22,7 +32,7 @@ export const useStoryStore = defineStore('story', () => {
   let activeCtrl: AbortController | null = null
 
   /**
-   * 缓存命中判定：abbr + style 两维度都匹配才命中。
+   * 缓存命中判定（atlas / StoryResponse.abbr）：abbr + style 两维度都匹配才命中。
    */
   function isHit(abbr: string, style: StoryStyle): boolean {
     const s = current.value
@@ -139,6 +149,94 @@ export const useStoryStore = defineStore('story', () => {
     return finalMeta
   }
 
+  /**
+   * Photo-level 故事流（spec `docs/superpowers/specs/2026-09-03-story-photo-design.md` §3.1）。
+   * 入参是整张照片的 context（constellations / bright_stars / center / field），
+   * 与 atlas 单星座的 fetchStory / fetchStoryStream 区分。
+   *
+   * 缓存命中：current 由上次 photo 流写入 + style 匹配 → 直接复用（后端 LRU 也会命中）。
+   * 错误：photo 协议不发 reset；error 事件后立即关流 + 抛出，UI 显示降级态。
+   */
+  async function fetchPhotoStory(
+    context: PhotoStoryContext,
+    style: StoryStyle,
+    action: 'refetch' | 'fresh' = 'fresh',
+  ): Promise<StoryResponse> {
+    // 缓存命中：上次 photo 流的 current.style 匹配 → 复用，不发请求
+    if (action === 'refetch') {
+      const s = current.value
+      if (s != null && !s.degraded && s.style === style) {
+        return s
+      }
+    }
+
+    // P0-5：中止上一个还在跑的流（用户快速连续触发 solve / 重新讲述时，
+    // 两个 SSE 往同一字符串 push 会字符交错）
+    activeSeq += 1
+    const mySeq = activeSeq
+    activeCtrl?.abort()
+    const ctrl = new AbortController()
+    activeCtrl = ctrl
+
+    // P1-7：前端端到端总时长兜底（后端 STORY_TOTAL_TIMEOUT 同预算）
+    const timer = setTimeout(() => ctrl.abort(new Error('故事生成超时')), STORY_STREAM_TIMEOUT_MS)
+
+    streaming.value = true
+    streamError.value = null
+    streamTitle.value = ''
+    streamText.value = ''
+    error.value = null
+    current.value = null
+
+    let finalMeta: StoryResponse | null = null
+
+    try {
+      await streamPhotoStory(
+        { lang: 'zh', style, cache_bust: action === 'fresh', context },
+        (ev) => {
+          // P0-5：过期请求的迟到事件不得写入 store
+          if (mySeq !== activeSeq) return
+          if (ev.type === 'title') {
+            streamTitle.value = ev.title
+          } else if (ev.type === 'char') {
+            streamText.value += ev.char
+          } else if (ev.type === 'done') {
+            finalMeta = ev.meta
+            current.value = ev.meta
+          } else if (ev.type === 'error') {
+            // PhotoErrorEvent 与 StoryStreamEvent.error 都带 message 字段；
+            // 避免直接访问 ev.code（PhotoStreamEvent 联合只有 PhotoErrorEvent 含 code，
+            // 需 'code' in ev 窄化才能用）；这里只用 message，无需窄化
+            streamError.value = ev.message
+          }
+          // photo 协议不发 reset（P2-3 spec §3.1）
+        },
+        ctrl.signal,
+      )
+    } catch (e) {
+      // P0-5：被新请求 abort（而非超时）→ 静默丢弃，不写错误状态
+      if (mySeq === activeSeq) {
+        streamError.value = (e as Error).message
+      }
+    } finally {
+      clearTimeout(timer)
+      if (mySeq === activeSeq) {
+        streaming.value = false
+        if (activeCtrl === ctrl) activeCtrl = null
+      }
+    }
+
+    if (mySeq !== activeSeq) {
+      // 已被更新的请求取代：不抛错、不返回，由新请求负责收尾
+      throw new DOMException('Aborted', 'AbortError')
+    }
+    if (streamError.value) throw new Error(streamError.value)
+    if (!finalMeta) {
+      throw new Error(streamError.value ?? '故事流未完成')
+    }
+    return finalMeta
+  }
+
   function clear() {
     activeSeq += 1
     activeCtrl?.abort()
@@ -154,6 +252,6 @@ export const useStoryStore = defineStore('story', () => {
   return {
     current, loading, error,
     streaming, streamTitle, streamText, streamError,
-    isHit, fetchStory, fetchStoryStream, clear,
+    isHit, fetchStory, fetchStoryStream, fetchPhotoStory, clear,
   }
 })

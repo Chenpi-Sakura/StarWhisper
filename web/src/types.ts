@@ -76,7 +76,7 @@ export interface StoryResponse {
   style: StoryStyle
   title: string
   paragraphs: string[]
-  provider: 'openai-compatible' | 'mock' | 'disabled' | 'fallback' | 'agentarts'
+  provider: 'openai-compatible' | 'mock' | 'disabled' | 'fallback' | 'agentarts' | 'ai'
   model: string
   latency_ms: number
   cached: boolean
@@ -91,6 +91,61 @@ export type StoryStreamEvent =
   | { type: 'done'; meta: StoryResponse }
   | { type: 'reset' }
   | { type: 'error'; message: string }
+
+/**
+ * Photo-level 故事上下文（spec `docs/superpowers/specs/2026-09-03-story-photo-design.md` §3.1）
+ *
+ * 与 atlas 单星座故事不同：photo-level 把整张照片解算出的多星座 / 亮星 /
+ * 视场中心一起交给 AI，`POST /api/story` 的 body 即 `PhotoStoryRequest`。
+ */
+export interface PhotoConstellation {
+  abbr: string
+  tradition: 'western' | 'chinese'
+  name: string
+  latin?: string
+  confidence?: number
+  /** chinese tradition 专用：本宿 / 星官归属 */
+  mansion?: string
+}
+
+export interface PhotoStar {
+  bayer: string
+  name: string
+  name_zh?: string
+  magnitude: number
+  /** 多归属：该物理星在各 tradition 下的星座 abbr 列表 */
+  constellations?: string[]
+}
+
+export interface PhotoCenter {
+  ra: number
+  dec: number
+}
+
+export interface PhotoField {
+  width_deg: number
+  height_deg: number
+}
+
+export interface PhotoStoryContext {
+  constellations: PhotoConstellation[]
+  bright_stars?: PhotoStar[]
+  center?: PhotoCenter
+  field?: PhotoField
+}
+
+export interface PhotoStoryRequest {
+  lang: 'zh'
+  style: StoryStyle
+  cache_bust?: boolean
+  context: PhotoStoryContext
+}
+
+/**
+ * StoryStreamEvent 已含 char 变体（P2-16）；photo-level 的 error 事件额外带
+ * `code`（AI_DISABLED / AI_TIMEOUT / ...），且不发 `reset`（photo 无 preset 降级）。
+ */
+export type PhotoErrorEvent = { type: 'error'; code: string; message: string }
 
 export interface HealthResponse {
   ok: boolean

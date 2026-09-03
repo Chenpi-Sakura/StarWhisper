@@ -145,16 +145,21 @@ pnpm build               # vue-tsc --noEmit + vite build
 
 ### AI 故事流
 
-`server/services/ai_provider.py` 抽象层：
-- `AgentArtsProvider`（华为云智能体运行时，API Key Bearer 鉴权；body 用 `{"inputs":{"query":"..."}}`；平台仅 `query` 入参，P2-1 修复把 system prompt 拼进 query）
-- `OpenAICompatibleProvider`（DeepSeek / OpenAI 等统一走 `/chat/completions`；含 P1-6 真流式 SSE 解析）
-- 都没配时 `DisabledProvider` 兜底 → `story_fallback.py` 从 traditions 内嵌 brief 取预设
+**photo-level 故事（ScanView）**：
+- `POST /api/story`：接 photo-level context（constellations[] + bright_stars[] + center + field）
+- 触发：scanStore.solveId 变化（每次新解算自动讲一次）
+- 切 chip（activeAbbr）不影响 story
+- 风格：myth / science（user content 携带 style，单一 AgentArts prompt）
+- 不提供 fallback：AI 失败 → SSE `event:error`，UI 错误态
+- 缓存：sha1(canonical_json({context, style, lang}))[:16]，TTL 10min
+- 提示词：`docs/prompts/story-photo.md`（用户粘贴到 AgentArts 后台）
 
-路由 `server/routers/story.py`：
-- `POST /api/story` 非流式（向后兼容）
-- `POST /api/story/stream` SSE 真流式；事件 `title` / `paragraph` / `done` / `reset` / `error`
-- AI 降级触发 `reset` 事件清空半截内容后再发 preset 全量（P0-3）
-- 缓存 key `(tradition, abbr, style)`，degraded:true 不写缓存（spec §5.4 / §16.4）
+**atlas 故事（ConstellationView 详情页）**：
+- `POST /api/atlas-story`：保留原 `/api/story` 语义
+- 触发：ConstellationView 详情页加载
+- 风格：myth / science
+- 保留 preset degraded fallback（atlas 体验需要降级兜底）
+- 缓存：`(tradition, abbr, style)` 三维，TTL 10min
 
 ---
 

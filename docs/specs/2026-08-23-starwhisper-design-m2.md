@@ -203,6 +203,11 @@ web/
 
 ### 3.3 POST /api/story（新增）
 
+> ⚠️ **DEPRECATED**：本节为 M2 spec；M3 已被 `docs/superpowers/specs/2026-09-03-story-photo-design.md` 取代：
+> - `POST /api/story` 现接 photo-level context（不再是单 abbr）
+> - 新增 `POST /api/atlas-story` 保留原 atlas 语义
+> - UI 触发逻辑从 chip 改为 solveId
+
 **HTTP:** POST | `application/json`
 **请求：**
 

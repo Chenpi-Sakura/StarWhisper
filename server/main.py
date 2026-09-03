@@ -7,11 +7,22 @@ T7 (atlas tradition) rewires list/detail endpoints by tradition + adds /api/trad
 
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from config import CORS_ORIGINS
-from routers import constellation, constellations, health, identify, index, story, traditions
+from routers import (
+    atlas_story,
+    constellation,
+    constellations,
+    health,
+    identify,
+    index,
+    story,
+    traditions,
+)
 from services.ai_provider import AgentArtsProvider, OpenAICompatibleProvider
 from services import traditions as _trad_svc
 
@@ -36,9 +47,39 @@ app.include_router(constellation.router)
 app.include_router(identify.router)
 app.include_router(constellations.router)
 app.include_router(story.router)
+app.include_router(atlas_story.router)
 app.include_router(health.router)
 app.include_router(traditions.router)
 app.include_router(index.router)
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_error_handler(request: Request, exc: RequestValidationError):
+    """photo-level 故事端点的 field_validator 抛 ValueError → 400 + detail dict。
+
+    仅当 path 是 /api/story 且错误来自我们的自定义 code（EMPTY_CONTEXT /
+    INVALID_STYLE）时才转 400 + `{detail:{code,message}}` 形状；其他端点
+    （query 缺参等）保持 FastAPI 默认 422 + detail 列表，避免影响既有的
+    test_index_missing_params / test_constellations_missing_tradition。
+    """
+    errors = exc.errors()
+    if errors and request.url.path == "/api/story":
+        msg = errors[0].get("msg", "")
+        if msg.startswith("Value error, "):
+            rest = msg[len("Value error, "):]
+            code = rest.split(":", 1)[0].strip()
+            return JSONResponse(
+                status_code=400,
+                content={"detail": {"code": code, "message": msg}},
+            )
+    # 默认 422 + detail 列表（FastAPI 原生形状）
+    return JSONResponse(
+        status_code=422,
+        content={"detail": [
+            {"loc": e.get("loc"), "msg": e.get("msg"), "type": e.get("type")}
+            for e in errors
+        ]},
+    )
 
 
 @app.on_event("startup")

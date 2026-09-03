@@ -7,7 +7,6 @@
 - chat 终止事件（event=end / data.node_type=End）
 - health 配置态
 - make_provider 工厂三优先级
-- /api/story/stream SSE 端点（title → paragraph ×N → done）
 """
 from __future__ import annotations
 
@@ -15,7 +14,6 @@ import asyncio
 import json
 
 import httpx
-import pytest
 from fastapi.testclient import TestClient
 
 from main import app
@@ -290,71 +288,8 @@ def test_make_provider_disabled(monkeypatch):
     assert isinstance(p, DisabledProvider)
 
 
-# ---- /api/story/stream SSE 端点 ----
-
-
-class _MockSuccessProvider:
-    name = "mock-success"
-
-    async def chat(self, system: str, user: str, *, timeout: float = 30.0) -> str:
-        return "测试标题：猎户永不相见\n\n这是真实 AI 返回的第一段文字。\n\n这是真实 AI 返回的第二段文字。"
-
-    async def health(self) -> bool:
-        return True
-
-
-def _clear_cache() -> None:
-    from routers.story import _CACHE_LOCK, _STORY_CACHE
-
-    with _CACHE_LOCK:
-        _STORY_CACHE.clear()
-
-
-@pytest.fixture(autouse=True)
-def _reset_story_cache():
-    _clear_cache()
-    yield
-    _clear_cache()
-
-
-def test_stream_sse_title_char_done(monkeypatch):
-    """P2-16 字符级 SSE 流：title → char ×N → done。"""
-    import json as _json
-    import routers.story as story_mod
-
-    monkeypatch.setattr(story_mod, "make_provider", lambda: _MockSuccessProvider())
-    _clear_cache()
-    c = TestClient(app)
-    with c.stream("POST", "/api/story/stream", json={"abbr": "ori", "style": "myth"}) as r:
-        assert r.status_code == 200
-        text = r.read().decode("utf-8")
-    assert "event: title" in text
-    assert "event: char" in text
-    assert "event: done" in text
-    # P2-16：字符级协议下 char 事件单个字符一个 JSON 帧；
-    # 把所有 char 事件的 data 解析出来再断言内容（preset 含"永不相见"典故）
-    char_text_parts: list[str] = []
-    for frame in text.split("\n\n"):
-        for line in frame.split("\n"):
-            if line.startswith("data:"):
-                try:
-                    obj = _json.loads(line[len("data:"):].strip())
-                    if "char" in obj:
-                        char_text_parts.append(obj["char"])
-                except _json.JSONDecodeError:
-                    pass
-    body_text = "".join(char_text_parts)
-    # T7: preset 来源改为 traditions 内嵌 brief；内容含"永不相见"典故
-    assert "永不相见" in body_text
-
-
-def test_stream_sse_invalid_abbr_returns_404(monkeypatch):
-    """未知星座 → 404 HTTP（校验在端点入口，未进 SSE 流）。"""
-    import routers.story as story_mod
-
-    monkeypatch.setattr(story_mod, "make_provider", lambda: _MockSuccessProvider())
-    _clear_cache()
-    c = TestClient(app)
-    r = c.post("/api/story/stream", json={"abbr": "draco", "style": "myth"})
-    assert r.status_code == 404
-    assert r.json()["detail"]["code"] == "CONSTELLATION_NOT_FOUND"
+# ---- /api/atlas-story/stream SSE 端点测试已迁到 tests/test_atlas_story.py ----
+# 2026-09-03 Task 3：原 /api/story/stream 端点重命名为 /api/atlas-story/stream，
+# 对应的两个测试（test_stream_sse_title_char_done /
+# test_stream_sse_invalid_abbr_returns_404）迁到 test_atlas_story.py 并解除
+# @pytest.mark.integration 标记。
