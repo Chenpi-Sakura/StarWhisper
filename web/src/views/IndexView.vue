@@ -226,6 +226,17 @@ function setRange(days: 1 | 7): void {
         </div>
       </div>
     </PlateBox>
+
+    <div class="mascot">
+      <figure class="mascot-frame">
+        <img src="/小聆.jpg" alt="小聆妹" />
+      </figure>
+      <div class="mascot-banner">
+        <span class="star-row">✦ ✦ ✦</span>
+        <p>小聆妹祝你观星成功！永远不淋雨！阴天教退散！</p>
+
+      </div>
+    </div>
   </div>
 </template>
 
@@ -456,5 +467,49 @@ function setRange(days: 1 | 7): void {
   letter-spacing: 0.08em;
   color: var(--ink-faint);
   padding: 6px 4px 0;
+}
+
+/* ---- 小聆 mascot（独立于 Plate Ⅰ 的页面底部落款）---- */
+.mascot {
+  text-align: center;
+  padding: 12px 0 8px;
+}
+.mascot-frame {
+  position: relative;
+  display: inline-block;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: var(--paper-hi);
+}
+.mascot-frame::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid var(--line-soft);
+  pointer-events: none;
+}
+.mascot-frame img {
+  display: block;
+  width: 210px;
+  max-width: 100%;
+  height: auto;
+}
+.mascot-banner {
+  margin-top: 16px;
+}
+.mascot-banner .star-row {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.8em;
+  margin-left: 0.8em;
+  color: var(--gold);
+}
+.mascot-banner p {
+  margin: 8px 0 0;
+  font-family: var(--cn);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--gold);
 }
 </style>
