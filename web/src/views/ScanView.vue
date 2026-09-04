@@ -1067,4 +1067,29 @@ watch(
   font-size: 13px;
   color: var(--ink-soft);
 }
+
+/* ================= 移动端适配 ================= */
+@media (max-width: 1000px) {
+  /* 解除图片高度限制，让图片自然流动 */
+  .stage-img {
+    max-height: none;
+  }
+  .stage-img.portrait {
+    height: auto;
+    max-width: 100%;
+  }
+  /* 解除溢出裁剪，让内容自然展开 */
+  .scan-view :deep(.plate) {
+    overflow: visible;
+  }
+  .scan-grid {
+    overflow: visible;
+  }
+  .story-inline :deep(.plate) {
+    overflow: visible;
+  }
+  .photo-stage.viewer {
+    max-width: 100%;
+  }
+}
 </style>

@@ -750,6 +750,20 @@ main.frame::-webkit-scrollbar-thumb:hover {
   .frontispiece .orn {
     display: none;
   }
+  /* 移动端：解除桌面「固定壳 + 内部滚动」布局，改为自然流 + 页面滚动 */
+  html,
+  body {
+    height: auto;
+    overflow: visible;
+  }
+  #app {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  main.frame {
+    overflow-y: visible;
+  }
 }
 @media (max-width: 620px) {
   .frame {
