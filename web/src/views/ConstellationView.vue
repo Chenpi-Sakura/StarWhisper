@@ -314,6 +314,16 @@ function onMedalWheel(e: WheelEvent) {
   height: 470px;
   display: grid;
   place-items: center;
+  overflow: hidden;
+}
+/* canvas 容器绝对定位填满 map-stage，避免 grid 下 height:100% 解析失败
+   导致 canvas 回退到内禀像素高度（dpr_eff × 470px）而溢出。
+   与 ScanView .photo-stage.viewer :deep(.star-canvas-container) 同策略。 */
+.map-stage :deep(.star-canvas-container) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 .map-svg {
   width: 100%;
