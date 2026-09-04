@@ -78,7 +78,7 @@ function onMedalWheel(e: WheelEvent) {
     <!-- 顶部：圆形 medal 铭牌（3 行高，鼠标滚轮滑动查看更多） -->
     <div
       v-if="atlas.currentItems.length > 0"
-      class="smedal-row anim"
+      class="smedal-row anim go"
       data-testid="smedal-row"
       @wheel="onMedalWheel"
     >

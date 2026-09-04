@@ -132,7 +132,7 @@ function setRange(days: 1 | 7): void {
 
     <PlateBox plate="PLATE Ⅰ" caption="观星指数 · 今夜之鉴">
       <!-- loading -->
-      <div v-if="status === 'loading'" class="placeholder anim" data-testid="stargaze-loading">
+      <div v-if="status === 'loading'" class="placeholder anim go" data-testid="stargaze-loading">
         <div class="seal gold big-seal">观</div>
         <h2>观星指数</h2>
         <p class="sub">OPEN-METEO · 月相 · BORTLE</p>
@@ -141,7 +141,7 @@ function setRange(days: 1 | 7): void {
       </div>
 
       <!-- error -->
-      <div v-else-if="status === 'error'" class="placeholder anim" data-testid="stargaze-error">
+      <div v-else-if="status === 'error'" class="placeholder anim go" data-testid="stargaze-error">
         <div class="seal gold big-seal">滞</div>
         <h2>天象未明</h2>
         <p class="note">{{ store.errorMessage ?? '天气服务暂不可用' }}</p>
@@ -151,7 +151,7 @@ function setRange(days: 1 | 7): void {
       </div>
 
       <!-- ready -->
-      <div v-else-if="data" class="ready anim" data-testid="stargaze-ready">
+      <div v-else-if="data" class="ready anim go" data-testid="stargaze-ready">
         <div class="loc-bar">
           <span class="loc-name">{{ data.province }} · {{ data.city }}</span>
           <span class="loc-coord">

@@ -8,16 +8,25 @@
  * The cap uses the standard `<b>PLATE Ⅹ</b><span>subtitle</span><i class="rule"/><span class="fleuron">❧</span>` layout;
  * callers usually supply caption text via the `caption` prop.
  */
+import { onMounted, ref, nextTick } from 'vue'
+
 defineProps<{
   /** Small uppercase latin label, e.g. "PLATE Ⅰ" */
   plate?: string
   /** Chinese subtitle, e.g. "观星指数 · 今夜之鉴" */
   caption?: string
 }>()
+
+const root = ref<HTMLElement | null>(null)
+
+onMounted(async () => {
+  await nextTick()
+  root.value?.classList.add('go')
+})
 </script>
 
 <template>
-  <section class="plate anim">
+  <section ref="root" class="plate anim">
     <header v-if="plate || caption || $slots['cap-icon']" class="plate-cap">
       <slot name="cap-icon">
         <b v-if="plate">{{ plate }}</b>
