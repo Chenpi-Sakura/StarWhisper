@@ -311,7 +311,7 @@ function onMedalWheel(e: WheelEvent) {
   position: relative;
   border: 1px solid var(--line);
   background: #ece0c0;
-  min-height: 470px;
+  height: 470px;
   display: grid;
   place-items: center;
 }
