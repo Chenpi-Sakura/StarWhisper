@@ -595,20 +595,14 @@ watch(
   flex-direction: column;
   gap: 22px;
   margin-top: 8px;
-  flex: 1;
-  min-height: 0;
 }
 /* 让 PlateBox 的 plate/plate-body 也参与 flex chain，约束 .scan-grid 不撑高 */
 .scan-view :deep(.plate) {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 .scan-view :deep(.plate-body) {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -617,9 +611,6 @@ watch(
   display: grid;
   grid-template-columns: 1.25fr 0.95fr;
   gap: 22px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
 }
 .scan-grid > div:last-child {
   display: flex;
@@ -650,13 +641,13 @@ watch(
   display: block;
   width: 100%;
   height: auto;
-  max-height: min(68vh, 640px);
+  max-height: none;
   object-fit: contain;
 }
 .stage-img.portrait {
   width: auto;
   max-width: 100%;
-  height: min(66vh, 620px);
+  height: auto;
   margin: 0 auto;
 }
 .photo-stage.viewer :deep(.star-canvas-container) {
@@ -833,22 +824,15 @@ watch(
 /* story-inline：识别卡下方嵌套 plate（可滚动的故事区） */
 .story-inline {
   margin-top: 18px;
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 .story-inline :deep(.plate) {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 .story-inline :deep(.plate-body) {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
@@ -1070,26 +1054,8 @@ watch(
 
 /* ================= 移动端适配 ================= */
 @media (max-width: 1000px) {
-  /* 解除图片高度限制，让图片自然流动 */
-  .stage-img {
-    max-height: none;
-  }
-  .stage-img.portrait {
-    height: auto;
-    max-width: 100%;
-  }
-  /* 解除溢出裁剪，让内容自然展开 */
-  .scan-view :deep(.plate) {
-    overflow: visible;
-  }
   .scan-grid {
-    overflow: visible;
-  }
-  .story-inline :deep(.plate) {
-    overflow: visible;
-  }
-  .photo-stage.viewer {
-    max-width: 100%;
+    grid-template-columns: 1fr;
   }
 }
 </style>
