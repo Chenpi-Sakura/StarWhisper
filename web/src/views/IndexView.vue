@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 
-import { useStargazeStore } from '../stores/stargaze'
+import { useStargazeStore, PRESET_CITIES } from '../stores/stargaze'
 import PlateBox from '../components/common/PlateBox.vue'
 import StarBtn from '../components/common/StarBtn.vue'
 import StarChip from '../components/common/StarChip.vue'
@@ -99,6 +99,13 @@ function setRange(days: 1 | 7): void {
   store.setRange(days)
 }
 
+function onCitySelect(e: Event): void {
+  const target = e.target as HTMLSelectElement
+  const idx = parseInt(target.value, 10)
+  if (isNaN(idx) || idx < 0 || idx >= PRESET_CITIES.length) return
+  store.selectCity(PRESET_CITIES[idx])
+}
+
 </script>
 
 <template>
@@ -157,6 +164,12 @@ function setRange(days: 1 | 7): void {
           <span class="loc-coord">
             北纬 {{ data.lat.toFixed(2) }}° · 东经 {{ data.lon.toFixed(2) }}°
           </span>
+          <select class="city-select" @change="onCitySelect">
+            <option value="">选择城市…</option>
+            <option v-for="(c, i) in PRESET_CITIES" :key="c.label" :value="i">
+              {{ c.label }}
+            </option>
+          </select>
           <StarBtn label="重新定位" variant="ghost" size="sm" @click="store.locate()" />
         </div>
 
@@ -310,6 +323,36 @@ function setRange(days: 1 | 7): void {
   letter-spacing: 0.12em;
   color: var(--ink-faint);
   flex: 1;
+}
+
+.city-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line-soft);
+  background: #efe5c9;
+  padding: 3px 28px 3px 10px;
+  font-family: var(--cn);
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 5 5-5z' fill='%235c4b32'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: 0.25s;
+}
+
+.city-select:hover {
+  border-color: var(--gold);
+  color: var(--ink);
+}
+
+.city-select:focus {
+  outline: none;
+  border-color: var(--gold);
+  color: var(--ink);
 }
 
 .score-row {
