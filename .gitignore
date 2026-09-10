@@ -22,6 +22,15 @@ dist/
 # Vite 缓存（web/.vite/deps 自动生成的依赖预构建产物）
 web/.vite/
 
+# ---- 部署运行时产物（scripts/deploy.sh 写入）----
+server/.runtime/
+web/.runtime/
+
+# ---- pnpm 工具链误生成（corepack 占位，仅出现在项目根目录）----
+# 真正的依赖锁在 web/pnpm-lock.yaml；根目录这两个文件是 pnpm 误产物
+/package.json
+/pnpm-lock.yaml
+
 # ---- 配置与密钥 ----
 .env
 .env.*
