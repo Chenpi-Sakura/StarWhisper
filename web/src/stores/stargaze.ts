@@ -3,7 +3,14 @@ import { computed, ref } from 'vue'
 
 import type { StargazeIndex } from '../types'
 import { fetchStargazeIndex } from '../api/stargaze'
-import { searchCity, type GeoResult } from '../api/geocoding'
+import { searchCity } from '../api/geocoding'
+import {
+  DEFAULT_LIMIT,
+  hitToOption,
+  loadCityIndex,
+  type CityIndex,
+  type CityOption,
+} from '../utils/cityTrie'
 import { currentHourOffset, MAX_HOUR_OFFSET } from '../utils/stargazeRange'
 
 export type StargazeStatus = 'idle' | 'loading' | 'ready' | 'error'
@@ -44,6 +51,11 @@ export const PRESET_CITIES: StargazeLocation[] = [
   { lat: 38.0428, lon: 114.5149, label: '石家庄' },
   { lat: 37.8706, lon: 112.5489, label: '太原' },
 ]
+
+export const ONLINE_FALLBACK_DELAY_MS = 250
+
+/** 在线兜底前的防抖等待。 */
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 export const useStargazeStore = defineStore('stargaze', () => {
   const status = ref<StargazeStatus>('idle')
@@ -148,38 +160,86 @@ export const useStargazeStore = defineStore('stargaze', () => {
     )
   }
 
-  /** 通过预设城市选择（区间选择保持不变）。 */
-  async function selectCity(city: StargazeLocation): Promise<void> {
-    await load(city.lat, city.lon, {
-      startHour: rangeStartHour.value,
-      hours: rangeHours.value,
-    })
-  }
-
-  const searchResults = ref<GeoResult[]>([])
+  const searchResults = ref<CityOption[]>([])
+  /** 本地城市表加载态（首次聚焦搜索框时懒加载）。 */
+  const cityIndexStatus = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  /** 是否正在等在线兜底结果（本地命中时为 false——本地查询无需等待）。 */
   const searching = ref(false)
 
-  /** 任意城市模糊搜索；空串清空，异常静默清空。 */
-  async function search(query: string, signal?: AbortSignal): Promise<void> {
+  let cityIndex: CityIndex | null = null
+  let onlineController: AbortController | null = null
+  /** 查询代次：防抖窗口内出现新查询时，旧查询直接放弃（防止旧响应/旧请求覆盖新结果）。 */
+  let searchGen = 0
+
+  /** 懒加载本地城市前缀索引（单例，重复调用复用）。 */
+  async function ensureCityIndex(): Promise<void> {
+    if (cityIndexStatus.value === 'ready' || cityIndexStatus.value === 'loading') return
+    cityIndexStatus.value = 'loading'
+    try {
+      cityIndex = await loadCityIndex({ priorityNames: PRESET_CITIES.map((c) => c.label) })
+      cityIndexStatus.value = 'ready'
+    } catch {
+      cityIndexStatus.value = 'error'
+    }
+  }
+
+  /**
+   * 城市搜索：本地前缀索引优先（零延迟、无网络）。
+   *
+   * - 本地有命中 → 直接返回，**不发任何请求**
+   * - 本地 0 命中且输入 ≥ 2 字 → 在线兜底（限中国），覆盖行政区划表外的镇/景区
+   */
+  async function search(query: string): Promise<void> {
     const q = query.trim()
+    const gen = ++searchGen
+    if (onlineController) {
+      onlineController.abort()
+      onlineController = null
+    }
     if (!q) {
       searchResults.value = []
+      searching.value = false
       return
     }
+    if (!cityIndex) await ensureCityIndex()
+    if (gen !== searchGen) return // 其间又有新查询 → 丢弃本次
+    const local = cityIndex ? cityIndex.search(q, DEFAULT_LIMIT) : []
+    if (local.length) {
+      searchResults.value = local.map((h) => hitToOption(h, q))
+      searching.value = false
+      return
+    }
+    searchResults.value = []
+    if (q.length < 2) {
+      searching.value = false
+      return
+    }
+    // 本地 0 命中 → 等防抖窗口再走在线兜底（避免逐字敲打时刷接口）
     searching.value = true
+    await delay(ONLINE_FALLBACK_DELAY_MS)
+    if (gen !== searchGen) return
+    onlineController = new AbortController()
     try {
-      searchResults.value = await searchCity(q, signal)
+      const online = await searchCity(q, onlineController.signal)
+      searchResults.value = online.map((r) => ({
+        name: r.name,
+        lng: r.longitude,
+        lat: r.latitude,
+        label: ['在线', r.admin1, r.admin2].filter(Boolean).join(' · '),
+        source: 'online' as const,
+      }))
     } catch {
       searchResults.value = []
     } finally {
       searching.value = false
+      onlineController = null
     }
   }
 
   /** 选中搜索结果并加载该坐标指数（区间选择保持不变）。 */
-  async function selectSearchResult(r: GeoResult): Promise<void> {
+  async function selectSearchResult(o: CityOption): Promise<void> {
     searchResults.value = []
-    await load(r.latitude, r.longitude, {
+    await load(o.lat, o.lng, {
       startHour: rangeStartHour.value,
       hours: rangeHours.value,
     })
@@ -187,7 +247,8 @@ export const useStargazeStore = defineStore('stargaze', () => {
 
   return {
     status, data, errorMessage, rangeStartHour, rangeHours, selectedDayIndex,
-    location, load, setRange, applyPreset, locate, selectCity,
+    location, load, setRange, applyPreset, locate,
     searchResults, searching, search, selectSearchResult,
+    cityIndexStatus, ensureCityIndex,
   }
 })

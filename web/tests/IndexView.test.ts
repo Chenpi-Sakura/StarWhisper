@@ -134,45 +134,32 @@ describe('IndexView', () => {
     expect(wrapper.text()).toContain('良')
   })
 
-  it('城市搜索输入触发 store.search（带 AbortSignal 通道）', async () => {
+  it('城市栏挂载 CitySearch 组件，原生 datalist 已移除', async () => {
     fetchMock.mockResolvedValue(sampleIndex())
     const wrapper = mountView()
     await flushPromises()
 
-    const input = wrapper.find('input.field')
-    expect(input.exists()).toBe(true)
-    await input.setValue('冷湖')
-    // 防抖 300ms，需推进定时器
-    await new Promise((r) => setTimeout(r, 350))
-    await flushPromises()
-
-    expect(searchCityMock).toHaveBeenCalled()
-    const lastArgs = searchCityMock.mock.calls[searchCityMock.mock.calls.length - 1]
-    expect(lastArgs[0]).toBe('冷湖')
-    expect(lastArgs[1]).toBeInstanceOf(AbortSignal)
+    expect(wrapper.findComponent({ name: 'CitySearch' }).exists()).toBe(true)
+    expect(wrapper.find('.city-bar input.field').exists()).toBe(true)
+    expect(wrapper.find('datalist').exists()).toBe(false)
   })
 
-  it('"查阅"按钮无匹配时弹出 toast 反馈（I-1）', async () => {
+  it('城市搜索无匹配且直接点「查阅」时给出反馈（不再要求先查询）', async () => {
     fetchMock.mockResolvedValue(sampleIndex())
-    // 输入"未搜索过的城市"——searchResults 保持空，模拟"输入框直接打字→点查阅"
     const wrapper = mountView()
     await flushPromises()
-    // 注意：mount 时 pinia 已激活，useToastStore() 取得同一实例
     const toast = useToastStore()
     expect(toast.items).toHaveLength(0)
 
-    const input = wrapper.find('input.field')
-    await input.setValue('某未搜索城市')
-    // 不推进 setTimeout（不触发 search），直接点查阅
     const lookupBtn = wrapper.findAll('button').find((b) => b.text().trim() === '查阅')
     expect(lookupBtn).toBeTruthy()
     await lookupBtn!.trigger('click')
     await flushPromises()
 
     expect(toast.items.length).toBeGreaterThanOrEqual(1)
-    const last = toast.items[toast.items.length - 1]
-    expect(last.message).toContain('未找到')
-    expect(last.type).toMatch(/info|error/)
+    // 无输入时提示的是「请输入」，而不是旧的「未找到该城市，请先查询再查阅」
+    expect(toast.items.at(-1)?.message).toContain('请输入')
+    expect(toast.items.at(-1)?.message).not.toContain('请先查询')
   })
 
   it('C1 契约：FIG.3 使用 daily_moon/daily_astro 切片（camelCase 会 fallback）', async () => {

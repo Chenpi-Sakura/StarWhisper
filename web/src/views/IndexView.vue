@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted } from 'vue'
 
-import { useStargazeStore, PRESET_CITIES } from '../stores/stargaze'
-import { useToastStore } from '../stores/toast'
+import { useStargazeStore } from '../stores/stargaze'
 import {
   applyRangePatch,
   currentHourOffset,
@@ -17,6 +16,7 @@ import StarChip from '../components/common/StarChip.vue'
 import IndexGauge from '../components/index/IndexGauge.vue'
 import TrendBars from '../components/index/TrendBars.vue'
 import MoonCard from '../components/index/MoonCard.vue'
+import CitySearch from '../components/index/CitySearch.vue'
 
 defineEmits<{
   'go-atlas': []
@@ -24,7 +24,6 @@ defineEmits<{
 }>()
 
 const store = useStargazeStore()
-const toast = useToastStore()
 
 onMounted(() => {
   store.locate()
@@ -175,48 +174,7 @@ const preset7dActive = computed(
   () => store.rangeStartHour === 0 && store.rangeHours === 168,
 )
 
-function onCitySelect(e: Event): void {
-  const target = e.target as HTMLSelectElement
-  const idx = parseInt(target.value, 10)
-  if (isNaN(idx) || idx < 0 || idx >= PRESET_CITIES.length) return
-  store.selectCity(PRESET_CITIES[idx])
-}
-
-// ---- 城市搜索（防抖 + AbortController 竞态防护） ----
-const cityQuery = ref('')
-let searchTimer: ReturnType<typeof setTimeout> | undefined
-let searchController: AbortController | undefined
-
-watch(cityQuery, (q) => {
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    // 取消上一次未回的请求，避免旧响应覆盖新结果（selectSearchResult 清空也由 in-flight search 触发）
-    if (searchController) searchController.abort()
-    searchController = new AbortController()
-    store.search(q, searchController.signal)
-  }, 300)
-})
-
-function onCityPick(e: Event): void {
-  const el = e.target as HTMLInputElement
-  const hit = store.searchResults.find(
-    (r) => `${r.name}${r.admin1 ? `·${r.admin1}` : ''}` === el.value,
-  )
-  if (hit) {
-    cityQuery.value = hit.name
-    store.selectSearchResult(hit)
-  }
-}
-
-function onCityPickFromInput(): void {
-  const q = cityQuery.value.trim()
-  const hit = store.searchResults.find((r) => r.name === q)
-  if (hit) {
-    store.selectSearchResult(hit)
-    return
-  }
-  toast.show('未找到该城市，请先查询再查阅', 'info')
-}
+// ---- 城市搜索已抽到 <CitySearch />（本地前缀树 + 自绘下拉） ----
 
 </script>
 
@@ -279,16 +237,7 @@ function onCityPickFromInput(): void {
             </div>
             <div class="plate-body">
               <div class="city-bar">
-                <input v-model="cityQuery" class="field" list="cityList" placeholder="手动搜索城市，如 冷湖 / 杭州 / 重庆…" @change="onCityPick" />
-                <datalist id="cityList">
-                  <option v-for="r in store.searchResults" :key="`${r.latitude},${r.longitude}`" :value="`${r.name}${r.admin1 ? `·${r.admin1}` : ''}`" />
-                </datalist>
-                <StarBtn label="查阅" @click="onCityPickFromInput" />
-                <StarBtn label="◎ 自动定位" variant="gold" @click="store.locate()" />
-                <select class="preset-select" @change="onCitySelect" aria-label="预设城市">
-                  <option value="">预设城市…</option>
-                  <option v-for="(c, i) in PRESET_CITIES" :key="c.label" :value="i">{{ c.label }}</option>
-                </select>
+                <CitySearch />
               </div>
 
               <div class="city-title">
@@ -455,7 +404,7 @@ function onCityPickFromInput(): void {
   }
 }
 
-/* ---- 城市搜索 ---- */
+/* ---- 城市搜索（控件样式在 CitySearch.vue 内，为 scoped 作用域一致） ---- */
 .city-bar {
   display: flex;
   align-items: center;
@@ -464,41 +413,6 @@ function onCityPickFromInput(): void {
   padding-bottom: 16px;
   border-bottom: 1px solid var(--line-soft);
   margin-bottom: 18px;
-}
-.field {
-  flex: 1;
-  min-width: 200px;
-  border: 1px solid var(--line-soft);
-  background: #efe5c9;
-  padding: 7px 12px;
-  font-family: var(--cn);
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  color: var(--ink);
-  transition: 0.25s;
-}
-.field:focus {
-  outline: none;
-  border-color: var(--gold);
-}
-.preset-select {
-  border: 1px solid var(--line-soft);
-  background: #efe5c9;
-  padding: 6px 28px 6px 10px;
-  font-family: var(--cn);
-  font-size: 11.5px;
-  letter-spacing: 0.14em;
-  color: var(--ink-soft);
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 5 5-5z' fill='%235c4b32'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  transition: 0.25s;
-}
-.preset-select:hover {
-  border-color: var(--gold);
-  color: var(--ink);
 }
 
 /* ---- 城市标题 ---- */

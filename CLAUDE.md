@@ -34,19 +34,23 @@ server/                  FastAPI + Python 3.11+ + pytest
     constellation.py     星座详情
     weather.py           Open-Meteo 观星指数四档（优/良/一般/差）
   data/                  traditions/{western,chinese}/<abbr>.json + fixtures
-  tests/                 pytest（72 个用例：identify + jpeg_recompress + traditions
-                         + story + e2e — story 覆盖 P0/P1/P2 全部修复路径）
+  tests/                 pytest（214 个用例：identify + jpeg_recompress + traditions
+                         + story + index/astro 时刻 — story 覆盖 P0/P1/P2 全部修复路径）
 
 web/                     Vue 3 + Vite + TS + Pinia + vitest + jsdom
+  scripts/gen-cities.mjs 生成 public/data/cn-cities.json（DataV 行政区划，`pnpm gen:cities`，一次联网）
+  public/data/           运行时按需 fetch 的静态数据（cn-cities.json：3237 条省/市/区县前缀表）
   src/
-    stores/              scan / atlas / story（fetchStoryStream 真 SSE）
-    views/               ScanView / ConstellationView
+    stores/              scan / atlas / story（fetchStoryStream 真 SSE）/ stargaze / toast
+    views/               ScanView / ConstellationView / IndexView（观星指数）
     components/          StarCanvas（overlay + atlas 三模式）/ StoryPanel / AtlasStoryStatic
-                         / AtlasTraditionTabs / common（PlateBox/StarBtn/StarChip）
+                         / AtlasTraditionTabs / index（IndexGauge/TrendBars/MoonCard/CitySearch）
+                         / common（PlateBox/StarBtn/StarChip）
     api/                 solve.ts / story.ts（streamStory）/ health.ts / atlas.ts
-    utils/               exif / heic
+                         / stargaze.ts / geocoding.ts（在线兜底，限 countryCode=CN）
+    utils/               exif / heic / stargazeRange（区间选择）/ cityTrie（中文城市前缀树）
   public/samples/        离线 mock fixture + 样图
-  tests/                 vitest（123 个用例，覆盖 store/router/组件三类）
+  tests/                 vitest（223 个用例，覆盖 store/router/组件/数据产物四类）
 ```
 
 ---
@@ -83,9 +87,10 @@ curl http://127.0.0.1:8000/api/health
 ```bash
 cd web
 pnpm install
-pnpm test                # vitest run（72 个用例）
+pnpm test                # vitest run（223 个用例）
 pnpm test -- utils.exif  # 跑文件名包含 utils.exif 的
 pnpm dev                 # :5173（已配 /api 代理到 :8000）
+pnpm gen:cities          # 重新生成中国城市前缀数据（一次联网，改城市表时才需要）
 pnpm build               # vue-tsc --noEmit + vite build
 ```
 
@@ -129,6 +134,14 @@ pnpm build               # vue-tsc --noEmit + vite build
 - `find_nearest(ra, dec, max_sep_deg, top_k)` 用 astropy SkyCoord 球面距离反查
 - 命中星座（距离最近）作为 `constellations[0]`，包含 `tradition` / `abbr` / `name` / `latin` / `confidence` / `visible_stars`
 
+### 城市搜索（观星指数页）
+
+分两层，**本地优先**：
+- `web/src/utils/cityTrie.ts`：中文城市前缀树（省/地级市/区县 3237 条），数据来自
+  `web/public/data/cn-cities.json`（`pnpm gen:cities` 生成），首次聚焦搜索框才 fetch
+- 本地 0 命中且输入 ≥2 字 → `api/geocoding.ts` 在线兜底（限 `countryCode=CN`，覆盖镇/景区如「冷湖」）
+- UI 是自绘下拉 `components/index/CitySearch.vue`（不用 `<datalist>`）：「查阅」取高亮项或首条
+
 ### AI 故事流
 
 **photo-level 故事（ScanView）**：
@@ -151,8 +164,8 @@ pnpm build               # vue-tsc --noEmit + vite build
 
 ## 测试基础设施
 
-- 后端 72 测试：identify + jpeg_recompress + traditions + story (P0/P1/P2 全覆盖) + e2e
-- 前端 123 测试：jsdom + setup polyfill（URL.createObjectURL）
+- 后端 214 测试：identify + jpeg_recompress + traditions + story (P0/P1/P2 全覆盖) + index/astro
+- 前端 223 测试：jsdom + setup polyfill（URL.createObjectURL）；含城市数据产物校验与搜索交互
 - e2e：test1/test2/test3 三张真实星图（`assets/test*.jpg`），test1 是 D610 MPO 24MP 长焦样图
 
 ### 故事组件关键事实（P0/P1/P2 之后）
@@ -183,6 +196,7 @@ curl -s -X POST -F "image=@assets/test1.jpg" http://127.0.0.1:8000/api/identify/
 | `docs/specs/2026-08-25-atlas-tradition-design.md` | tradition 多源星表设计 |
 | `docs/plans/2026-08-24-starwhisper-m2-impl.md` | M2 实施计划 |
 | `docs/PROJECT_BRIEF.md` | 产品背景 + 评分口径 |
+| `docs/plans/2026-09-12-city-search-trie.md` | 改城市搜索 / 城市数据 / 前缀树时 |
 | `server/requirements.txt` | 后端依赖 |
 
 ---

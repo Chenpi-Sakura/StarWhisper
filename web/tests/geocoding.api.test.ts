@@ -24,6 +24,8 @@ describe('geocoding api', () => {
     expect(url).toContain('geocoding-api.open-meteo.com/v1/search')
     expect(url).toContain('name=')
     expect(url).toContain('language=zh')
+    // 只做中国城市：结果限定 countryCode=CN
+    expect(url).toContain('countryCode=CN')
   })
 
   it('无结果返回空数组', async () => {

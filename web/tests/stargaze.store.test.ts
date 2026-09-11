@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 
@@ -15,6 +15,15 @@ vi.mock('../src/api/geocoding', () => ({
 }))
 
 import { useStargazeStore, DEFAULT_LOCATION } from '../src/stores/stargaze'
+import { resetCityIndexCache } from '../src/utils/cityTrie'
+import { fixtureFetch } from './fixtures/cityFile'
+
+/** 桩掉城市数据文件请求（本地前缀索引），返回 fetch spy。 */
+function stubCityFetch() {
+  const spy = vi.fn(fixtureFetch())
+  vi.stubGlobal('fetch', spy)
+  return spy
+}
 
 function sampleIndex(over: Partial<StargazeIndex> = {}): StargazeIndex {
   const dailyMoon = [
@@ -62,8 +71,13 @@ beforeEach(() => {
   setActivePinia(createPinia())
   fetchMock.mockReset()
   searchCityMock.mockReset()
+  resetCityIndexCache() // 城市索引是模块级单例，跨用例必须清
   // @ts-expect-error 清理可能的 geolocation 桩
   delete navigator.geolocation
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 describe('stargaze store', () => {
@@ -273,34 +287,93 @@ describe('stargaze store', () => {
     })
   })
 
-  it('search 有结果时填充 searchResults，selectSearchResult 触发 load', async () => {
+  it('本地前缀命中：不发任何网络请求，searching 保持 false', async () => {
+    stubCityFetch()
+    fetchMock.mockResolvedValue(sampleIndex())
+    const store = useStargazeStore()
+
+    await store.search('成都')
+    expect(store.searchResults.length).toBeGreaterThan(0)
+    expect(store.searchResults[0]).toMatchObject({
+      name: '成都市',
+      source: 'local',
+      prefix: '成都',
+    })
+    expect(store.searching).toBe(false)
+    expect(searchCityMock).not.toHaveBeenCalled() // 关键：本地命中不碰网络
+
+    await store.selectSearchResult(store.searchResults[0])
+    expect(fetchMock).toHaveBeenLastCalledWith(30.66, 104.06, {
+      startHour: store.rangeStartHour,
+      hours: 24,
+      signal: undefined,
+    })
+    expect(store.searchResults).toEqual([]) // 选中后收起
+  })
+
+  it('本地 0 命中且输入 ≥2 字 → 走在线兜底（限中国），结果标 source=online', async () => {
+    stubCityFetch()
     fetchMock.mockResolvedValue(sampleIndex({ city: '冷湖' }))
     searchCityMock.mockResolvedValue([
       { name: '冷湖', admin1: '青海省', latitude: 38.0, longitude: 93.4 },
     ])
     const store = useStargazeStore()
-    await store.search('冷湖')
-    expect(store.searchResults).toHaveLength(1)
-    expect(store.searching).toBe(false)
 
-    await store.selectSearchResult(store.searchResults[0])
-    expect(fetchMock).toHaveBeenLastCalledWith(38.0, 93.4, {
-      startHour: store.rangeStartHour,
-      hours: 24,
-      signal: undefined,
-    })
-    expect(store.data?.city).toBe('冷湖')
+    await store.search('冷湖')
+    expect(searchCityMock).toHaveBeenCalledTimes(1)
+    expect(searchCityMock.mock.calls[0][0]).toBe('冷湖')
+    expect(store.searchResults).toEqual([
+      {
+        name: '冷湖',
+        lng: 93.4,
+        lat: 38.0,
+        label: '在线 · 青海省',
+        source: 'online',
+      },
+    ])
+    expect(store.searching).toBe(false)
   })
 
-  it('search 空串清空结果且不发请求；失败静默清空', async () => {
+  it('本地 0 命中但只有 1 个字 → 不发在线请求', async () => {
+    stubCityFetch()
+    const store = useStargazeStore()
+    await store.search('黔')
+    expect(searchCityMock).not.toHaveBeenCalled()
+    expect(store.searching).toBe(false)
+  })
+
+  it('空查询清空结果；在线失败静默清空（不影响本地能力）', async () => {
+    stubCityFetch()
     const store = useStargazeStore()
     await store.search('')
     expect(searchCityMock).not.toHaveBeenCalled()
     expect(store.searchResults).toEqual([])
 
     searchCityMock.mockRejectedValue(new Error('down'))
-    await store.search('冷湖')
+    await store.search('某不存在的城')
     expect(store.searching).toBe(false)
+    expect(store.searchResults).toEqual([])
+
+    // 在线失败后本地依然可用
+    await store.search('成都')
+    expect(store.searchResults[0].name).toBe('成都市')
+  })
+
+  it('ensureCityIndex 只加载一次，状态 idle → loading → ready', async () => {
+    const fetchSpy = stubCityFetch()
+    const store = useStargazeStore()
+    expect(store.cityIndexStatus).toBe('idle')
+    await store.ensureCityIndex()
+    expect(store.cityIndexStatus).toBe('ready')
+    await store.ensureCityIndex()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('城市数据加载失败：状态置 error，搜索不报错（仅返回空）', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: false, status: 500 })))
+    const store = useStargazeStore()
+    await store.search('成都')
+    expect(store.cityIndexStatus).toBe('error')
     expect(store.searchResults).toEqual([])
   })
 })
