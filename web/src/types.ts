@@ -296,6 +296,25 @@ export interface HourlyPoint {
   grade: StargazeGrade
   cloud: number
   precip: number
+  /**
+   * 是否属夜间可观测时段（日落之后 或 天文晨光之前）。
+   * 后端 /api/index 逐点计算；旧 fixture 缺省时按「可观测」处理。
+   */
+  night?: boolean
+}
+
+/** /api/index astro 时间组（"HH:MM" 或 null = 事件不可见） */
+export interface StargazeAstro {
+  sunrise: string | null
+  sunset: string | null
+  /** 天文暮光结束（太阳降到 −18°）：今晚真正的暗夜开始 */
+  astro_dusk: string | null
+  /** 天文晨光（太阳升到 −18°）：次日暗夜结束 */
+  astro_dawn: string | null
+  moonrise: string | null
+  moonset: string | null
+  galactic_rise: string | null
+  galactic_set: string | null
 }
 
 export interface StargazeIndex {
@@ -312,5 +331,12 @@ export interface StargazeIndex {
   moon: StargazeMoon
   now: StargazeNow
   components: StargazeComponents
+  astro?: StargazeAstro
   hourly: HourlyPoint[]
+  /** /api/index 返回当前所选日的索引（0=今天，最大 6，snake_case 对齐后端） */
+  day_index?: number
+  /** 未来 7 天每日月相（与 moon 同形态，snake_case 对齐后端） */
+  daily_moon?: StargazeMoon[]
+  /** 未来 7 天每日天文时刻（日出/日落/暮光/晨光/月出月落/银心升落，snake_case 对齐后端） */
+  daily_astro?: StargazeAstro[]
 }

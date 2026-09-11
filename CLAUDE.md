@@ -4,20 +4,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## ⚠️ 每次 commit 必做
-
-`作品提交文件夹/04码道使用证明/` 目录下放的是 **OPC 大赛提交物**（运行截图 / 实操演示 / 改进前后对比 / spec 修订说明 / M2 执行情况等 png），由本会话每次实现新功能后**手动更新**。
-
-**规则**：每次 commit 前必须检查此目录是否有新截图/新内容；如有，**必须**把这些 png 一起 commit 进去（保留大赛提交物的连续性）。
-
-git 操作建议：
-```bash
-git add "作品提交文件夹/04码道使用证明/"*.png
-# 然后再正常 add 代码改动
-```
-
----
-
 ## 项目一句话
 
 StarWhisper（星语天象）—— 拍照识星座 + 星座动起来 + AI 讲神话。2026 华为云 OPC 创意大赛参赛作品。**当前里程碑：M2（真实解算 + AI 故事 + atlas 多 tradition 落地）**。

@@ -89,3 +89,14 @@ def test_moon_info_smoke():
     assert 0.0 <= info["illumination"] <= 1.0
     assert info["label"] in ("新月", "蛾眉月", "上弦月", "盈凸月",
                              "满月", "亏凸月", "下弦月", "残月")
+
+def test_build_daily_moon_length_and_monotonic():
+    out = idx.build_daily_moon(date(2026, 9, 20), days=7)
+    assert len(out) == 7
+    assert out[1]["phase"] > out[0]["phase"]
+    assert out[6]["label"]
+
+
+def test_build_daily_moon_default_days_is_7():
+    out = idx.build_daily_moon(date(2026, 9, 20))
+    assert len(out) == 7

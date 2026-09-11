@@ -1,10 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import { useStargazeStore, PRESET_CITIES } from '../stores/stargaze'
+import { useToastStore } from '../stores/toast'
+import {
+  applyRangePatch,
+  currentHourOffset,
+  dateHourFromOffset,
+  formatHourOffset,
+  isoPlusDays,
+  todayIso,
+} from '../utils/stargazeRange'
 import PlateBox from '../components/common/PlateBox.vue'
 import StarBtn from '../components/common/StarBtn.vue'
 import StarChip from '../components/common/StarChip.vue'
+import IndexGauge from '../components/index/IndexGauge.vue'
+import TrendBars from '../components/index/TrendBars.vue'
+import MoonCard from '../components/index/MoonCard.vue'
 
 defineEmits<{
   'go-atlas': []
@@ -12,6 +24,7 @@ defineEmits<{
 }>()
 
 const store = useStargazeStore()
+const toast = useToastStore()
 
 onMounted(() => {
   store.locate()
@@ -35,69 +48,132 @@ const gradeColor = computed(() => {
   }
 })
 
-const components = computed(() => {
-  const c = data.value?.components
-  if (!c) return []
+/** 与 server/services/index.py 的 grade() 对齐：≥80 优 / ≥60 良 / ≥40 一般 / 其余差。 */
+const gradeDesc = computed(() => {
+  switch (data.value?.grade) {
+    case '优': return '夜空澄澈，宜观星'
+    case '良': return '尚可一观，留意月色'
+    case '一般': return '条件平平，量力而行'
+    case '差': return '云深雨重，不宜观星'
+    default: return ''
+  }
+})
+
+const factors = computed(() => {
+  const d = data.value
+  if (!d) return []
   return [
-    { key: 'cloud', label: '云量', value: c.cloud },
-    { key: 'precip', label: '降水', value: c.precip },
-    { key: 'windtemp', label: '风温', value: c.windtemp },
-    { key: 'moon', label: '月相', value: c.moon },
-    { key: 'bortle', label: '光污染', value: c.bortle },
+    { key: 'cloud', label: '云量覆盖', display: `${d.now.cloud}%`, value: d.now.cloud },
+    { key: 'rain',  label: '降水概率', display: `${d.now.precip}%`, value: d.now.precip },
+    { key: 'light', label: '光污染强度', display: `${d.bortle_label} · ${Math.round(d.components.bortle)}%`, value: d.components.bortle },
   ]
 })
 
-// ---- 曲线 ----
-const W = 600
-const H = 180
-const PAD_X = 10
-const PAD_TOP = 18
-const PAD_BOTTOM = 26
-
-function yForScore(score: number): number {
-  return PAD_TOP + (1 - score / 100) * (H - PAD_TOP - PAD_BOTTOM)
+/** 快捷预设：`24h` = 此刻起 24 小时；`7d` = 今日 00:00 起整 7 日。 */
+function setRange(preset: '24h' | '7d'): void {
+  store.applyPreset(preset)
 }
 
-const curvePoints = computed(() => {
-  const pts = data.value?.hourly ?? []
-  if (pts.length === 0) return ''
-  const step = (W - PAD_X * 2) / Math.max(1, pts.length - 1)
-  return pts
-    .map((p, i) => {
-      const x = PAD_X + i * step
-      const y = yForScore(p.score)
-      return `${x.toFixed(1)},${y.toFixed(1)}`
-    })
-    .join(' ')
-})
+/** 今天（本地时区，选择器与偏移换算的基准日）。 */
+const today = todayIso()
 
-const curveArea = computed(() => {
-  const pts = data.value?.hourly ?? []
-  if (pts.length === 0) return ''
-  const step = (W - PAD_X * 2) / Math.max(1, pts.length - 1)
-  const line = pts
-    .map((p, i) => `${(PAD_X + i * step).toFixed(1)},${yForScore(p.score).toFixed(1)}`)
-    .join(' ')
-  return `${PAD_X},${H - PAD_BOTTOM} ${line} ${W - PAD_X},${H - PAD_BOTTOM}`
-})
+/** 区间端点在「日期 + 整点」形态下的当前值（唯一来源 = store.rangeStartHour/rangeHours）。 */
+const startPoint = computed(() => dateHourFromOffset(store.rangeStartHour, today))
+const endPoint = computed(() =>
+  dateHourFromOffset(store.rangeStartHour + store.rangeHours - 1, today),
+)
 
-const xLabels = computed(() => {
-  const pts = data.value?.hourly ?? []
-  if (pts.length === 0) return []
-  const idxs = [0, Math.floor((pts.length - 1) / 2), pts.length - 1]
-  return [...new Set(idxs)].map((i) => formatHour(pts[i].time))
-})
-
-function formatHour(t: string): string {
-  const [d, time] = t.split('T')
-  const mm = d.slice(5, 7)
-  const dd = d.slice(8, 10)
-  return `${mm}/${dd} ${time.slice(0, 2)}时`
+/**
+ * 任意单端改动（日期或整点）→ 重算区间并重新拉取。
+ * 最小粒度 1 小时；起点平移保持原时长，终点越界自动 clamp 到 7 天窗口。
+ */
+function applyRangeChange(patch: {
+  startDate?: string
+  startHour?: number
+  endDate?: string
+  endHour?: number
+}): void {
+  const { startHour, hours } = applyRangePatch(
+    {
+      startDate: startPoint.value.date,
+      startHour: startPoint.value.hour,
+      endDate: endPoint.value.date,
+      endHour: endPoint.value.hour,
+    },
+    patch,
+    today,
+  )
+  store.setRange(startHour, hours)
 }
 
-function setRange(days: 1 | 7): void {
-  store.setRange(days)
+const rangeStartDate = computed({
+  get: () => startPoint.value.date,
+  set: (v: string) => applyRangeChange({ startDate: v }),
+})
+const rangeStartHour = computed({
+  get: () => startPoint.value.hour,
+  set: (v: number) => applyRangeChange({ startHour: Number(v) }),
+})
+const rangeEndDate = computed({
+  get: () => endPoint.value.date,
+  set: (v: string) => applyRangeChange({ endDate: v }),
+})
+const rangeEndHour = computed({
+  get: () => endPoint.value.hour,
+  set: (v: number) => applyRangeChange({ endHour: Number(v) }),
+})
+
+/** 可选日期：今天 ~ +6 天（后端 7 天窗口）。 */
+function minDay(): string {
+  return today
 }
+
+function maxDay(): string {
+  return isoPlusDays(today, 6)
+}
+
+/** 整点选项 00:00 - 23:00（最小粒度小时）。 */
+const hourOptions = Array.from({ length: 24 }, (_, h) => ({
+  value: h,
+  label: `${String(h).padStart(2, '0')}:00`,
+}))
+
+/** 当前选中日展示文字：今天 / 明天 / 后天 + M月D日（FIG.3 用）。 */
+const dayDisplay = computed(() => {
+  const offset = store.selectedDayIndex
+  const prefix = offset === 0 ? '今天' : offset === 1 ? '明天' : offset === 2 ? '后天' : ''
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  const md = `${d.getMonth() + 1} 月 ${d.getDate()} 日`
+  return prefix ? `${prefix} · ${md}` : md
+})
+
+/** 当前所选日的月相 + astro 切片（向后兼容：未提供 daily 字段时 fallback 到 data.moon / data.astro）。 */
+const currentMoon = computed(() =>
+  data.value?.daily_moon?.[store.selectedDayIndex] ?? data.value?.moon,
+)
+const currentAstro = computed(() =>
+  data.value?.daily_astro?.[store.selectedDayIndex] ?? data.value?.astro,
+)
+/** 次日天文时刻：用于「次日天文晨光」与今夜的暗夜时长（最后一天回退当天值）。 */
+const nextAstro = computed(() =>
+  data.value?.daily_astro?.[store.selectedDayIndex + 1],
+)
+
+/** FIG.2 标题里的区间文字：今天 14:00 → 明天 13:00 · 共 24 小时。 */
+const rangeText = computed(() => {
+  const s = store.rangeStartHour
+  const e = s + store.rangeHours - 1
+  return `${formatHourOffset(s, today)} → ${formatHourOffset(e, today)} · 共 ${store.rangeHours} 小时`
+})
+
+/** chip 选中态：24h = 此刻起满 24 个整点；7d = 今日 00:00 起整 7 日。 */
+const preset24Active = computed(
+  () => store.rangeHours === 24 && store.rangeStartHour === currentHourOffset(),
+)
+const preset7dActive = computed(
+  () => store.rangeStartHour === 0 && store.rangeHours === 168,
+)
 
 function onCitySelect(e: Event): void {
   const target = e.target as HTMLSelectElement
@@ -106,11 +182,47 @@ function onCitySelect(e: Event): void {
   store.selectCity(PRESET_CITIES[idx])
 }
 
+// ---- 城市搜索（防抖 + AbortController 竞态防护） ----
+const cityQuery = ref('')
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+let searchController: AbortController | undefined
+
+watch(cityQuery, (q) => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    // 取消上一次未回的请求，避免旧响应覆盖新结果（selectSearchResult 清空也由 in-flight search 触发）
+    if (searchController) searchController.abort()
+    searchController = new AbortController()
+    store.search(q, searchController.signal)
+  }, 300)
+})
+
+function onCityPick(e: Event): void {
+  const el = e.target as HTMLInputElement
+  const hit = store.searchResults.find(
+    (r) => `${r.name}${r.admin1 ? `·${r.admin1}` : ''}` === el.value,
+  )
+  if (hit) {
+    cityQuery.value = hit.name
+    store.selectSearchResult(hit)
+  }
+}
+
+function onCityPickFromInput(): void {
+  const q = cityQuery.value.trim()
+  const hit = store.searchResults.find((r) => r.name === q)
+  if (hit) {
+    store.selectSearchResult(hit)
+    return
+  }
+  toast.show('未找到该城市，请先查询再查阅', 'info')
+}
+
 </script>
 
 <template>
   <div class="index-view">
-    <!-- 卷首题签（只在首页显示） -->
+    <!-- 卷首题签 -->
     <section class="frontispiece anim go">
       <svg class="orn orn-spin" viewBox="0 0 120 120" fill="none" stroke="#5c4b32" stroke-width="0.8">
         <circle cx="60" cy="60" r="56" opacity="0.5" />
@@ -157,85 +269,116 @@ function onCitySelect(e: Event): void {
         </div>
       </div>
 
-      <!-- ready -->
+      <!-- ready：双栏图版 -->
       <div v-else-if="data" class="ready anim go" data-testid="stargaze-ready">
-        <div class="loc-bar">
-          <span class="loc-name">{{ data.province }} · {{ data.city }}</span>
-          <span class="loc-coord">
-            北纬 {{ data.lat.toFixed(2) }}° · 东经 {{ data.lon.toFixed(2) }}°
-          </span>
-          <select class="city-select" @change="onCitySelect">
-            <option value="">选择城市…</option>
-            <option v-for="(c, i) in PRESET_CITIES" :key="c.label" :value="i">
-              {{ c.label }}
-            </option>
-          </select>
-          <StarBtn label="重新定位" variant="ghost" size="sm" @click="store.locate()" />
-        </div>
-
-        <div class="score-row">
-          <div class="dial" :style="{ borderColor: gradeColor }">
-            <div class="dial-score" :style="{ color: gradeColor }">{{ data.score }}</div>
-            <div class="dial-grade" :style="{ color: gradeColor }">{{ data.grade }}</div>
-            <div class="dial-cap">今夜观星指数</div>
-          </div>
-          <div class="meta">
-            <div class="meta-item">
-              <span class="k">月相</span>
-              <span class="v">
-                {{ data.moon.label }} · 月照 {{ Math.round(data.moon.illumination * 100) }}%
-              </span>
+        <div class="index-grid">
+          <!-- 左：PLATE Ⅰ 主图版 -->
+          <div class="plate">
+            <div class="plate-cap">
+              <b>FIG. 1</b><span>今夜指数总评</span><i class="rule"></i><span class="fleuron">❧</span>
             </div>
-            <div class="meta-item">
-              <span class="k">光污染</span>
-              <span class="v">Bortle {{ data.bortle }} · {{ data.bortle_label }}</span>
+            <div class="plate-body">
+              <div class="city-bar">
+                <input v-model="cityQuery" class="field" list="cityList" placeholder="手动搜索城市，如 冷湖 / 杭州 / 重庆…" @change="onCityPick" />
+                <datalist id="cityList">
+                  <option v-for="r in store.searchResults" :key="`${r.latitude},${r.longitude}`" :value="`${r.name}${r.admin1 ? `·${r.admin1}` : ''}`" />
+                </datalist>
+                <StarBtn label="查阅" @click="onCityPickFromInput" />
+                <StarBtn label="◎ 自动定位" variant="gold" @click="store.locate()" />
+                <select class="preset-select" @change="onCitySelect" aria-label="预设城市">
+                  <option value="">预设城市…</option>
+                  <option v-for="(c, i) in PRESET_CITIES" :key="c.label" :value="i">{{ c.label }}</option>
+                </select>
+              </div>
+
+              <div class="city-title">
+                <h3>{{ data.province }} · {{ data.city }}</h3>
+                <span class="tag">北纬 {{ data.lat.toFixed(2) }}° · Bortle {{ data.bortle }} · {{ data.bortle_label }}</span>
+              </div>
+
+              <div class="gauge-wrap">
+                <IndexGauge :score="data.score" />
+                <div class="gauge-meta">
+                  <div class="seal" :class="`lv-${data.grade}`">{{ data.grade }}</div>
+                  <span class="lv-desc">{{ gradeDesc }}</span>
+                </div>
+                <div class="lv-legend">
+                  <i class="g">优 ≥80</i><i>良 60–79</i><i>一般 40–59</i><i class="r">差 &lt;40</i>
+                </div>
+              </div>
+
+              <div class="divider-orn">☾ 综合云量 · 降水 · 光污染 ☽</div>
+              <template v-for="f in factors" :key="f.key">
+                <div class="meter-row"><span>{{ f.label }}</span><b>{{ f.display }}</b></div>
+                <div class="meter-track"><div class="meter-fill" :style="{ width: `${Math.min(100, f.value)}%` }"></div></div>
+              </template>
+
+              <div class="actions">
+                <StarBtn label="试一张 orion" variant="gold" @click="$emit('try-orion')" />
+                <StarBtn label="前往星座图鉴 →" variant="default" @click="$emit('go-atlas')" />
+              </div>
             </div>
-            <div class="meta-item">
-              <span class="k">今夜天气</span>
-              <span class="v">
-                云 {{ data.now.cloud }}% · 降水 {{ data.now.precip }}% ·
-                {{ data.now.temp.toFixed(0) }}°C · 风 {{ data.now.wind.toFixed(0) }} km/h
-              </span>
+          </div>
+
+          <!-- 右：FIG.2 + FIG.3 -->
+          <div class="side-col">
+            <div class="plate">
+              <div class="plate-cap">
+                <b>FIG. 2</b><span>{{ rangeText }}</span><i class="rule"></i><span class="fleuron">❧</span>
+              </div>
+              <div class="plate-body">
+                <div class="range-picker">
+                  <span class="picker-label">起</span>
+                  <input
+                    class="date-input range-start-date"
+                    type="date"
+                    :min="minDay()"
+                    :max="maxDay()"
+                    v-model="rangeStartDate"
+                    aria-label="区间起始日期"
+                  />
+                  <select
+                    class="hour-select range-start-hour"
+                    v-model.number="rangeStartHour"
+                    aria-label="区间起始整点"
+                  >
+                    <option v-for="h in hourOptions" :key="h.value" :value="h.value">{{ h.label }}</option>
+                  </select>
+                  <span class="picker-label">止</span>
+                  <input
+                    class="date-input range-end-date"
+                    type="date"
+                    :min="minDay()"
+                    :max="maxDay()"
+                    v-model="rangeEndDate"
+                    aria-label="区间结束日期"
+                  />
+                  <select
+                    class="hour-select range-end-hour"
+                    v-model.number="rangeEndHour"
+                    aria-label="区间结束整点"
+                  >
+                    <option v-for="h in hourOptions" :key="h.value" :value="h.value">{{ h.label }}</option>
+                  </select>
+                  <span class="range-hint">最小粒度 1 小时 · 限未来 7 日</span>
+                </div>
+                <TrendBars :hourly="data.hourly" :now-time="data.now.time" />
+                <div class="curve-tabs">
+                  <StarChip label="此刻起 24 时" :active="preset24Active" @click="setRange('24h')" />
+                  <StarChip label="整 7 日" :active="preset7dActive" @click="setRange('7d')" />
+                </div>
+              </div>
+            </div>
+
+            <div class="plate">
+              <div class="plate-cap">
+                <b>FIG. 3</b><span>{{ dayDisplay }} · 月相</span><i class="rule"></i><span class="fleuron">❧</span>
+              </div>
+              <div class="plate-body">
+                <MoonCard :moon="currentMoon!" :astro="currentAstro" :next-astro="nextAstro" />
+              </div>
             </div>
           </div>
-        </div>
-
-        <div class="components">
-          <div v-for="c in components" :key="c.key" class="comp">
-            <span class="comp-label">{{ c.label }}</span>
-            <span class="comp-bar"><i :style="{ width: `${Math.min(100, c.value)}%` }" /></span>
-            <span class="comp-val">{{ Math.round(c.value) }}</span>
-          </div>
-        </div>
-
-        <div class="curve-head">
-          <span class="curve-title">
-            未来 {{ store.rangeDays === 1 ? '24 小时' : '7 天' }} 观星时段曲线
-          </span>
-          <div class="curve-tabs">
-            <StarChip label="24 小时" :active="store.rangeDays === 1" @click="setRange(1)" />
-            <StarChip label="7 天" :active="store.rangeDays === 7" @click="setRange(7)" />
-          </div>
-        </div>
-
-        <svg
-          class="curve"
-          :viewBox="`0 0 ${W} ${H}`"
-          role="img"
-          aria-label="观星指数时段曲线"
-        >
-          <line :x1="PAD_X" :x2="W - PAD_X" :y1="yForScore(60)" :y2="yForScore(60)" class="ref-line" />
-          <line :x1="PAD_X" :x2="W - PAD_X" :y1="yForScore(40)" :y2="yForScore(40)" class="ref-line soft" />
-          <polygon :points="curveArea" class="curve-area" />
-          <polyline :points="curvePoints" class="curve-line" />
-        </svg>
-        <div class="curve-xlabels">
-          <span v-for="(l, i) in xLabels" :key="i">{{ l }}</span>
-        </div>
-
-        <div class="actions">
-          <StarBtn label="试一张 orion" variant="gold" @click="$emit('try-orion')" />
-          <StarBtn label="前往星座图鉴 →" variant="default" @click="$emit('go-atlas')" />
         </div>
       </div>
     </PlateBox>
@@ -247,7 +390,6 @@ function onCitySelect(e: Event): void {
       <div class="mascot-banner">
         <span class="star-row">✦ ✦ ✦</span>
         <p>小聆妹祝你观星成功！永远不淋雨！阴天教退散！</p>
-
       </div>
     </div>
   </div>
@@ -260,6 +402,7 @@ function onCitySelect(e: Event): void {
   gap: 22px;
   margin-top: 8px;
 }
+
 .placeholder {
   text-align: center;
   padding: 32px 20px 8px;
@@ -292,46 +435,56 @@ function onCitySelect(e: Event): void {
   max-width: 540px;
   line-height: 2;
 }
-.actions {
+
+/* ---- 双栏图版 ---- */
+.index-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+.side-col {
   display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: 20px;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+@media (max-width: 1000px) {
+  .index-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
-/* ---- ready ---- */
-.loc-bar {
+/* ---- 城市搜索 ---- */
+.city-bar {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   flex-wrap: wrap;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--line-soft);
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
-.loc-name {
-  font-family: var(--cn);
-  font-weight: 700;
-  font-size: 18px;
-  letter-spacing: 0.12em;
-  color: var(--ink);
-}
-.loc-coord {
-  font-family: var(--disp);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  color: var(--ink-faint);
+.field {
   flex: 1;
-}
-
-.city-select {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  min-width: 200px;
   border: 1px solid var(--line-soft);
   background: #efe5c9;
-  padding: 3px 28px 3px 10px;
+  padding: 7px 12px;
+  font-family: var(--cn);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  transition: 0.25s;
+}
+.field:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.preset-select {
+  border: 1px solid var(--line-soft);
+  background: #efe5c9;
+  padding: 6px 28px 6px 10px;
   font-family: var(--cn);
   font-size: 11.5px;
   letter-spacing: 0.14em;
@@ -343,176 +496,156 @@ function onCitySelect(e: Event): void {
   background-position: right 8px center;
   transition: 0.25s;
 }
-
-.city-select:hover {
+.preset-select:hover {
   border-color: var(--gold);
   color: var(--ink);
 }
 
-.city-select:focus {
-  outline: none;
-  border-color: var(--gold);
-  color: var(--ink);
-}
-
-.score-row {
+/* ---- 城市标题 ---- */
+.city-title {
   display: flex;
-  gap: 28px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.dial {
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  border: 6px double var(--gold);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin: 10px auto;
-}
-.dial-score {
-  font-family: var(--disp);
-  font-size: 58px;
-  font-weight: 700;
-  line-height: 1;
-}
-.dial-grade {
-  font-family: var(--cn);
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: 0.3em;
-  margin-top: 2px;
-}
-.dial-cap {
-  font-family: var(--cn);
-  font-size: 11px;
-  color: var(--ink-faint);
-  letter-spacing: 0.2em;
-  margin-top: 6px;
-}
-.meta {
-  flex: 1;
-  min-width: 280px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.meta-item {
-  display: flex;
-  gap: 12px;
   align-items: baseline;
-}
-.meta-item .k {
-  font-family: var(--cn);
-  font-size: 13px;
-  color: var(--gold);
-  letter-spacing: 0.2em;
-  min-width: 74px;
-}
-.meta-item .v {
-  font-family: var(--cn);
-  font-size: 14px;
-  color: var(--ink-soft);
-}
-
-.components {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px 22px;
-  margin: 22px 0;
-  padding: 18px;
-  border: 1px solid var(--line-soft);
-  background: rgba(244, 236, 212, 0.5);
-}
-.comp {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.comp-label {
-  font-family: var(--cn);
-  font-size: 12px;
-  color: var(--ink-soft);
-  letter-spacing: 0.12em;
-  min-width: 48px;
-}
-.comp-bar {
-  flex: 1;
-  height: 6px;
-  background: rgba(46, 36, 23, 0.1);
-  overflow: hidden;
-}
-.comp-bar i {
-  display: block;
-  height: 100%;
-  background: var(--gold);
-  transition: width 0.6s;
-}
-.comp-val {
-  font-family: var(--disp);
-  font-size: 13px;
-  color: var(--gold);
-  min-width: 24px;
-  text-align: right;
-}
-
-.curve-head {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  margin-top: 8px;
+  margin-bottom: 18px;
 }
-.curve-title {
+.city-title h3 {
+  margin: 0;
   font-family: var(--cn);
-  font-size: 14px;
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: 0.1em;
   color: var(--ink);
-  letter-spacing: 0.14em;
 }
+.city-title .tag {
+  font-family: var(--disp);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--ink-faint);
+}
+
+/* ---- 仪表盘 + 等级卡 ---- */
+.gauge-wrap {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 24px;
+  align-items: center;
+  padding: 14px 4px 8px;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 14px;
+}
+.gauge-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+.gauge-meta .seal {
+  width: 111px;
+  height: 111px;
+  font-size: 36px;
+  border-width: 2.5px;
+}
+/* 只保留等级描述文案，不再重复印章里的「优/良/一般/差」字 */
+.gauge-meta .lv-desc {
+  font-family: var(--cn);
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+.seal.lv-优 { color: var(--good); border-color: var(--good); }
+.seal.lv-良 { color: var(--gold); border-color: var(--gold); }
+.seal.lv-一般 { color: var(--ink-soft); border-color: var(--ink-soft); }
+.seal.lv-差 { color: var(--seal); border-color: var(--seal); }
+.lv-legend {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-family: var(--cn);
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+  padding-top: 4px;
+}
+.lv-legend i {
+  font-style: normal;
+}
+.lv-legend i.g { color: var(--good); }
+.lv-legend i.r { color: var(--seal); }
+
+/* ---- FIG.2 chip ---- */
 .curve-tabs {
   display: flex;
   gap: 8px;
-}
-.curve {
-  width: 100%;
-  height: 200px;
+  justify-content: flex-end;
   margin-top: 14px;
 }
-.ref-line {
-  stroke: var(--gold);
-  stroke-opacity: 0.4;
-  stroke-dasharray: 4 5;
-  stroke-width: 1;
-}
-.ref-line.soft {
-  stroke: var(--ink-faint);
-  stroke-opacity: 0.3;
-}
-.curve-area {
-  fill: rgba(201, 162, 74, 0.12);
-  stroke: none;
-}
-.curve-line {
-  fill: none;
-  stroke: var(--gold);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.curve-xlabels {
+
+/* ---- FIG.2 时间区间选择器（小时粒度） ---- */
+.range-picker {
   display: flex;
-  justify-content: space-between;
-  font-family: var(--disp);
-  font-size: 10.5px;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.range-picker .picker-label {
+  font-family: var(--cn);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: var(--ink-soft);
+}
+.range-picker .range-hint {
+  font-family: var(--cn);
+  font-size: 11px;
   letter-spacing: 0.08em;
   color: var(--ink-faint);
-  padding: 6px 4px 0;
+}
+.date-input {
+  border: 1px solid var(--line-soft);
+  background: #efe5c9;
+  padding: 5px 10px;
+  font-family: var(--cn);
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  transition: 0.25s;
+}
+.date-input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.hour-select {
+  border: 1px solid var(--line-soft);
+  background: #efe5c9;
+  padding: 5px 6px;
+  font-family: var(--disp);
+  font-size: 12px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: 0.25s;
+}
+.hour-select:focus {
+  outline: none;
+  border-color: var(--gold);
 }
 
-/* ---- 小聆 mascot（独立于 Plate Ⅰ 的页面底部落款）---- */
+/* ---- 行动按钮 ---- */
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+/* ---- 小聆 mascot ---- */
 .mascot {
   text-align: center;
   padding: 12px 0 8px;

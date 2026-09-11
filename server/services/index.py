@@ -10,7 +10,7 @@
 
 import json
 import math
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from astral import moon
@@ -78,6 +78,11 @@ def moon_info(d: date) -> dict:
         "illumination": round(moon_illumination(phase), 3),
         "label": _moon_label(phase),
     }
+
+
+def build_daily_moon(start_date: date, days: int = 7) -> list[dict]:
+    """生成未来 N 天的每日月相（与 moon_info(d) 同形态）。"""
+    return [moon_info(start_date + timedelta(days=i)) for i in range(days)]
 
 
 # ---- 子项评分 ----

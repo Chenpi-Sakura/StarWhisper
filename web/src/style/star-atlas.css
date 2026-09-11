@@ -166,6 +166,9 @@ a {
    是内层 padding 包装，不应滚动。用 main.frame 选择器精准锁定。 */
 main.frame {
   overflow-y: auto;
+  /* 装饰层（旋转罗盘等）不参与横向滚动：避免 main.frame 因
+     “overflow-y 非 visible ⇒ overflow-x 计算为 auto” 而出现横向滚动条 */
+  overflow-x: clip;
   /* 留 14px 给右下角滚动条呼吸 */
   scrollbar-gutter: stable;
 }
@@ -320,6 +323,18 @@ main.frame::-webkit-scrollbar-thumb:hover {
   gap: 24px;
   padding: 64px 0 46px;
   text-align: center;
+  /* 旋转装饰件的包围盒会超出网格列：transform 不影响布局，但会扩大
+     祖先的滚动溢出区（main.frame 因 overflow-y:auto 使 overflow-x 计算为 auto），
+     于是页面出现横向滚动条且随动画一涨一缩。这里裁掉装饰件不可见的四角。
+     装饰图案本身完全落在自身正方形内切圆内，裁切不会切到可见笔画。 */
+  overflow: clip;
+}
+/* 装饰件（罗盘 / 球体）：显式方形尺寸 + 列内居中（往中心收），
+   旋转后包围盒（×√2 ≈ 167px）留在两侧 30px 留白内，不再顶到视口边缘。 */
+.frontispiece .orn {
+  width: 118px;
+  height: 118px;
+  justify-self: center;
 }
 .orn-spin {
   animation: slowspin 90s linear infinite;
