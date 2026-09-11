@@ -53,3 +53,37 @@ def get_preset(abbr: str, style: str, tradition: str | None = None) -> Optional[
                 "paragraphs": view_entry.get("paragraphs", []),
             }
     return None
+
+
+def get_caption(abbr: str, tradition: str | None = None) -> Optional[str]:
+    """返回 (tradition, abbr) 对应的星座 caption（一句话简介）。
+
+    用于 /api/atlas-nota 端点的 degraded fallback——AI 不可用时降级到数据
+    文件中已存在的 `caption` 字段。找不到则返回 None（不抛错，让调用方
+    决定下一步：atlas-nota 此时返 503 NOTE_FALLBACK_MISSING）。
+
+    Args:
+        abbr: 星座缩写（ori / cyg / sco ...）。
+        tradition: 显式 tradition key（western / chinese）；缺省时跨 tradition
+            首命中（与 get_preset 行为对齐）。
+
+    Returns:
+        caption 字符串；不存在则 None。
+    """
+    from services.traditions import list_traditions, get_constellation
+
+    if tradition:
+        entry = get_constellation(tradition, abbr)
+        if entry is None:
+            return None
+        caption = entry.get("caption")
+        return caption if isinstance(caption, str) and caption.strip() else None
+
+    for t in list_traditions():
+        entry = get_constellation(t["key"], abbr)
+        if entry is None:
+            continue
+        caption = entry.get("caption")
+        if isinstance(caption, str) and caption.strip():
+            return caption
+    return None

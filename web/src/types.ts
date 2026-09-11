@@ -340,3 +340,31 @@ export interface StargazeIndex {
   /** 未来 7 天每日天文时刻（日出/日落/暮光/晨光/月出月落/银心升落，snake_case 对齐后端） */
   daily_astro?: StargazeAstro[]
 }
+
+/**
+ * 图鉴页 · 星座导读请求（POST /api/atlas-nota）。
+ * 2026-09-16 新增：取代原 <PlateBox caption="识读小笺"> 内联空壳。
+ * 与 /api/atlas-story 关系：atlas-story 走 SSE 流式 + myth/science 双视角，
+ * atlas-nota 是单档「星图导读」100-200 字非流式短文。
+ */
+export interface AtlasNotaRequest {
+  abbr: string
+  /** tradition key（western / chinese）；缺省时按 abbr 跨 tradition 首命中（向后兼容） */
+  tradition?: string
+  /** 跳过缓存重取 */
+  cacheBust?: boolean
+  /** 语言代码（暂固定 zh） */
+  lang?: string
+}
+
+export interface AtlasNotaResponse {
+  ok: boolean
+  tradition: string
+  abbr: string
+  /** AgentArts 生成的导读正文（100-200 字）或降级时的 caption */
+  intro: string
+  /** true 时表示 AI 不可用、降级到了 caption */
+  degraded: boolean
+  /** 来源：'agentarts' | 'preset' | 'cache' | 'ai' */
+  source: string
+}

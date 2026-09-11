@@ -2,6 +2,7 @@
 .codegraph/
 .codeartsdoer/
 .superpowers/
+.trae-html-share-packages/
 
 # ---- IDE / 编辑器 ----
 .idea/

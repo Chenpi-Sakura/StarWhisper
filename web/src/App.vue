@@ -9,7 +9,7 @@ import { useScanStore } from './stores/scan'
 
 type TabKey = 'scan' | 'index' | 'atlas'
 
-const activeTab = ref<TabKey>('scan')
+const activeTab = ref<TabKey>('index')
 const scan = useScanStore()
 
 const tabs: ReadonlyArray<{ key: TabKey; label: string; roman: string; mark: string }> = [

@@ -126,4 +126,25 @@ describe('ConstellationView', () => {
     expect(wrapper.findAll('.chip-list')).toHaveLength(0)
     expect(wrapper.findAll('.cchip')).toHaveLength(0)
   })
+
+  it('AtlasNota 挂在右列底部，传入 selected（见图鉴页改 AtlasNota）', async () => {
+    listTraditionsMock.mockResolvedValue({
+      items: [{ key: 'western', label: '西方星座', count: 5 }],
+    })
+    listConstellationsMock.mockResolvedValue({ tradition: 'western', items: FIVE_ITEMS })
+    getConstellationMock.mockResolvedValue(ORI_DATA)
+    const ConstellationView = (await import('../src/views/ConstellationView.vue')).default
+    const wrapper = mount(ConstellationView)
+    await flushPromises()
+    // AtlasNota 组件挂载
+    expect(wrapper.find('[data-testid="atlas-nota"]').exists()).toBe(true)
+    // 原内联 NOTA 文案不在
+    expect(wrapper.text()).not.toContain('神话，写给星空的信')
+    // 原内联 chip-list-inline 已删除
+    expect(wrapper.findAll('.chip-list-inline')).toHaveLength(0)
+    // AtlasNota 的两个底部 chip 都在（commit L 删除了「切换视角」chip）
+    expect(wrapper.text()).toContain('重新讲述')
+    expect(wrapper.text()).toContain('生成分享卡')
+    expect(wrapper.text()).not.toContain('切换视角')
+  })
 })

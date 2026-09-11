@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 import { useAtlasStore } from '../stores/atlas'
 import StarCanvas from '../components/StarCanvas.vue'
+import AtlasNota from '../components/atlas/AtlasNota.vue'
 import AtlasStoryStatic from '../components/AtlasStoryStatic.vue'
 import AtlasTraditionTabs from '../components/AtlasTraditionTabs.vue'
 import PlateBox from '../components/common/PlateBox.vue'
@@ -179,14 +180,7 @@ function onMedalWheel(e: WheelEvent) {
         </PlateBox>
 
         <PlateBox plate="NOTA" caption="识读小笺">
-          <p class="nota-text">
-            「神话」是古人写给星空的信，「科普」是星空写给今人的回信。两相对读，方见一颗星的全部。
-          </p>
-          <div class="chip-list-inline">
-            <StarChip variant="gold" label="切换视角" />
-            <StarChip label="重新讲述" />
-            <StarChip variant="gold" label="生成分享卡" />
-          </div>
+          <AtlasNota v-if="selected" :constellation="selected" />
         </PlateBox>
       </div>
     </div>
@@ -402,18 +396,5 @@ function onMedalWheel(e: WheelEvent) {
   gap: 8px;
   margin-top: 10px;
   flex-wrap: wrap;
-}
-
-/* NOTA plate */
-.nota-text {
-  font-size: 13.5px;
-  color: var(--ink-soft);
-  margin: 0;
-}
-.chip-list-inline {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 14px;
 }
 </style>
