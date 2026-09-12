@@ -119,7 +119,7 @@ describe('IndexView', () => {
     expect(wrapper.find('[data-testid="stargaze-loading"]').exists()).toBe(true)
   })
 
-  it('ready 态渲染双栏图版（PLATE Ⅰ + FIG.2 + FIG.3 + IndexGauge）', async () => {
+  it('ready 态渲染双栏图版（FIG.2 + FIG.3 + IndexGauge）', async () => {
     fetchMock.mockResolvedValue(sampleIndex())
     const wrapper = mountView()
     await flushPromises()
@@ -127,7 +127,8 @@ describe('IndexView', () => {
     expect(wrapper.find('[data-testid="stargaze-ready"]').exists()).toBe(true)
     expect(wrapper.find('.index-grid').exists()).toBe(true)
     expect(wrapper.findComponent({ name: 'IndexGauge' }).exists()).toBe(true)
-    expect(wrapper.text()).toContain('PLATE Ⅰ')
+    // 外层 PlateBox（PLATE Ⅰ · 观星指数 · 今夜之鉴）已被移除
+    expect(wrapper.text()).not.toContain('PLATE Ⅰ')
     expect(wrapper.text()).toContain('FIG. 2')
     expect(wrapper.text()).toContain('FIG. 3')
     expect(wrapper.text()).toContain('日落 18:52')
@@ -188,16 +189,16 @@ describe('IndexView', () => {
     expect(wrapper.text()).not.toContain('21:08')
   })
 
-  it('内层图版改名（不重复外层 PLATE Ⅰ 文案）+ 评级只留印章 + 保留等级描述', async () => {
+  it('内层图版用 FIG.1（外层 PlateBox 已删，无 PLATE Ⅰ 文案）+ 评级只留印章 + 保留等级描述', async () => {
     fetchMock.mockResolvedValue(sampleIndex())
     const wrapper = mountView()
     await flushPromises()
 
     expect(wrapper.text()).toContain('FIG. 1')
     expect(wrapper.text()).toContain('今夜指数总评')
-    // 「观星指数 · 今夜之鉴」只应来自外层 PlateBox（内层不再重复）
-    expect(wrapper.text().split('观星指数 · 今夜之鉴').length - 1).toBe(1)
-    expect(wrapper.text().split('PLATE Ⅰ').length - 1).toBe(1)
+    // 外层 PlateBox 移除后不再出现「观星指数 · 今夜之鉴」与「PLATE Ⅰ」文案
+    expect(wrapper.text().split('观星指数 · 今夜之鉴').length - 1).toBe(0)
+    expect(wrapper.text().split('PLATE Ⅰ').length - 1).toBe(0)
     // 印章保留评级字，但下方不再重复一个「差/优」字（描述文案保留）
     expect(wrapper.find('.gauge-meta .seal').text()).toBe('良')
     expect(wrapper.find('.gauge-meta b').exists()).toBe(false)

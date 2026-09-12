@@ -10,7 +10,6 @@ import {
   isoPlusDays,
   todayIso,
 } from '../utils/stargazeRange'
-import PlateBox from '../components/common/PlateBox.vue'
 import StarBtn from '../components/common/StarBtn.vue'
 import StarChip from '../components/common/StarChip.vue'
 import IndexGauge from '../components/index/IndexGauge.vue'
@@ -207,8 +206,8 @@ const preset7dActive = computed(
       </svg>
     </section>
 
-    <PlateBox plate="PLATE Ⅰ" caption="观星指数 · 今夜之鉴">
-      <!-- loading -->
+    <!-- 无外框容器：三态（loading / error / ready）直接铺开 -->
+    <!-- loading -->
       <div v-if="status === 'loading'" class="placeholder anim go" data-testid="stargaze-loading">
         <div class="seal gold big-seal">观</div>
         <h2>观星指数</h2>
@@ -330,7 +329,6 @@ const preset7dActive = computed(
           </div>
         </div>
       </div>
-    </PlateBox>
 
     <div class="mascot">
       <figure class="mascot-frame">
