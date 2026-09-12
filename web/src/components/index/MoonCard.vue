@@ -217,4 +217,27 @@ const moonriseText = computed(() => {
   flex-wrap: wrap;
   margin-top: 16px;
 }
+
+/* ================= 移动端（≤620px） ================= */
+@media (max-width: 620px) {
+  /* 显式单列：minmax(230px, 1fr) 在 ≤300px 可用宽度下会把 plate 撑宽 */
+  .moon-sun {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .sky-card {
+    gap: 12px;
+  }
+  .sky-ico {
+    width: 44px;
+    height: 44px;
+  }
+  .sky-card .t b {
+    font-size: 14px;
+  }
+  .moon-chips {
+    gap: 6px;
+    margin-top: 12px;
+  }
+}
 </style>

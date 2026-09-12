@@ -330,4 +330,39 @@ function barH(score: number): string {
   outline: 1px solid rgba(169, 126, 47, 0.3);
   outline-offset: -1px;
 }
+
+/* ================= 移动端（≤620px） ================= */
+@media (max-width: 620px) {
+  /* 降高 + 收紧字号，保证 24 槽的小时标签（每 4 小时一个）与 7 日视图
+     的 +Nd 刻度都不相互叠字（移动端实测问题） */
+  .chart-box {
+    height: 150px;
+  }
+  .chart-ylab {
+    /* 竖向说明在窄屏占比过大，且与左侧 y 刻度重复，让位给图体 */
+    display: none;
+  }
+  .chart-yticks {
+    width: 24px;
+    font-size: 9px;
+  }
+  .chart-axis {
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    padding: 0 4px 0 30px;
+  }
+  .chart-axis.slots {
+    padding: 0 6px 0 32px;
+  }
+  .axis-slot {
+    font-size: 8.5px;
+  }
+  .night-band {
+    padding: 0 6px 0 32px;
+  }
+  .chart-note {
+    gap: 10px;
+    font-size: 11.5px;
+  }
+}
 </style>

@@ -272,4 +272,22 @@ mark {
   border: 1px dashed #c9b88f;
   border-radius: 4px;
 }
+
+/* ================= 移动端（≤620px） ================= */
+@media (max-width: 620px) {
+  /* 去掉 260px 硬下限：窄屏（≤360px）时它会把 plate 撑宽 → 整块内容横向溢出 */
+  .city-search {
+    min-width: 0;
+  }
+  /* 输入框独占一行，「查阅 / 自动定位」平分第二行 */
+  .cs-field {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .cs-row :deep(.btn) {
+    flex: 1 1 0;
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+}
 </style>

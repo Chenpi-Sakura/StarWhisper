@@ -251,6 +251,40 @@ describe('IndexView', () => {
     expect(chip24!.classes()).toContain('active')
   })
 
+  it('起/止控件各自成组：窄屏换行时整组一起走（不会拆出「起 日期」与小时错位）', async () => {
+    fetchMock.mockResolvedValue(sampleIndex())
+    const wrapper = mountView()
+    await flushPromises()
+
+    const groups = wrapper.findAll('.range-picker .range-group')
+    expect(groups).toHaveLength(2)
+    // 起始组：起 + 日期 + 整点
+    expect(groups[0].find('.picker-label').text()).toBe('起')
+    expect(groups[0].find('input.range-start-date').exists()).toBe(true)
+    expect(groups[0].find('select.range-start-hour').exists()).toBe(true)
+    expect(groups[0].find('input.range-end-date').exists()).toBe(false)
+    // 结束组：止 + 日期 + 整点
+    expect(groups[1].find('.picker-label').text()).toBe('止')
+    expect(groups[1].find('input.range-end-date').exists()).toBe(true)
+    expect(groups[1].find('select.range-end-hour').exists()).toBe(true)
+    expect(groups[1].find('input.range-start-date').exists()).toBe(false)
+    // 提示文案仍在选择器内（窄屏独占一行：flex-basis 100%）
+    expect(wrapper.find('.range-picker .range-hint').text()).toContain('最小粒度 1 小时')
+  })
+
+  it('小聆寄语一句一行（移动端长句平铺会折在奇怪的位置）', async () => {
+    fetchMock.mockResolvedValue(sampleIndex())
+    const wrapper = mountView()
+    await flushPromises()
+
+    const lines = wrapper.findAll('.mascot-banner .mantra span')
+    expect(lines.map((l) => l.text())).toEqual([
+      '小聆妹祝你观星成功！',
+      '永远不淋雨！',
+      '阴天教退散！',
+    ])
+  })
+
   it('调整起始整点 → 保持原时长整体平移（小时粒度，非整天）', async () => {
     fetchMock.mockResolvedValue(sampleIndex())
     const wrapper = mountView()

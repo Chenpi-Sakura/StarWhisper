@@ -276,38 +276,44 @@ const preset7dActive = computed(
               </div>
               <div class="plate-body">
                 <div class="range-picker">
-                  <span class="picker-label">起</span>
-                  <input
-                    class="date-input range-start-date"
-                    type="date"
-                    :min="minDay()"
-                    :max="maxDay()"
-                    v-model="rangeStartDate"
-                    aria-label="区间起始日期"
-                  />
-                  <select
-                    class="hour-select range-start-hour"
-                    v-model.number="rangeStartHour"
-                    aria-label="区间起始整点"
-                  >
-                    <option v-for="h in hourOptions" :key="h.value" :value="h.value">{{ h.label }}</option>
-                  </select>
-                  <span class="picker-label">止</span>
-                  <input
-                    class="date-input range-end-date"
-                    type="date"
-                    :min="minDay()"
-                    :max="maxDay()"
-                    v-model="rangeEndDate"
-                    aria-label="区间结束日期"
-                  />
-                  <select
-                    class="hour-select range-end-hour"
-                    v-model.number="rangeEndHour"
-                    aria-label="区间结束整点"
-                  >
-                    <option v-for="h in hourOptions" :key="h.value" :value="h.value">{{ h.label }}</option>
-                  </select>
+                  <!-- 起/止各自成组：窄屏换行时整组走，不会拆出「起 日期」在上一行、
+                       小时在下一行的错位（移动端实测问题） -->
+                  <div class="range-group">
+                    <span class="picker-label">起</span>
+                    <input
+                      class="date-input range-start-date"
+                      type="date"
+                      :min="minDay()"
+                      :max="maxDay()"
+                      v-model="rangeStartDate"
+                      aria-label="区间起始日期"
+                    />
+                    <select
+                      class="hour-select range-start-hour"
+                      v-model.number="rangeStartHour"
+                      aria-label="区间起始整点"
+                    >
+                      <option v-for="h in hourOptions" :key="h.value" :value="h.value">{{ h.label }}</option>
+                    </select>
+                  </div>
+                  <div class="range-group">
+                    <span class="picker-label">止</span>
+                    <input
+                      class="date-input range-end-date"
+                      type="date"
+                      :min="minDay()"
+                      :max="maxDay()"
+                      v-model="rangeEndDate"
+                      aria-label="区间结束日期"
+                    />
+                    <select
+                      class="hour-select range-end-hour"
+                      v-model.number="rangeEndHour"
+                      aria-label="区间结束整点"
+                    >
+                      <option v-for="h in hourOptions" :key="h.value" :value="h.value">{{ h.label }}</option>
+                    </select>
+                  </div>
                   <span class="range-hint">最小粒度 1 小时 · 限未来 7 日</span>
                 </div>
                 <TrendBars :hourly="data.hourly" :now-time="data.now.time" />
@@ -336,7 +342,12 @@ const preset7dActive = computed(
       </figure>
       <div class="mascot-banner">
         <span class="star-row">✦ ✦ ✦</span>
-        <p>小聆妹祝你观星成功！永远不淋雨！阴天教退散！</p>
+        <!-- 一句一行（移动端长句平铺会折在奇怪的位置） -->
+        <p class="mantra">
+          <span>小聆妹祝你观星成功！</span>
+          <span>永远不淋雨！</span>
+          <span>阴天教退散！</span>
+        </p>
       </div>
     </div>
   </div>
@@ -397,8 +408,11 @@ const preset7dActive = computed(
   min-width: 0;
 }
 @media (max-width: 1000px) {
+  /* 必须是 minmax(0, 1fr) 而不是 1fr：单列下 1fr 的最小尺寸是 auto，
+     会被 plate 内仪表盘（280px）等固定宽度撑到 366px，窄屏整块内容
+     横向溢出、被 main.frame 的 overflow-x: clip 裁掉（移动端实测问题） */
   .index-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -507,6 +521,12 @@ const preset7dActive = computed(
   margin-bottom: 12px;
   border-bottom: 1px solid var(--line-soft);
 }
+.range-picker .range-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
 .range-picker .picker-label {
   font-family: var(--cn);
   font-size: 12px;
@@ -599,5 +619,82 @@ const preset7dActive = computed(
   font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--gold);
+}
+.mascot-banner .mantra {
+  line-height: 1.9;
+}
+/* 每句独占一行：letter-spacing 尾隙会让居中略偏右，用 margin-left 抵消 */
+.mascot-banner .mantra span {
+  display: block;
+  margin-left: 0.14em;
+}
+
+/* ================= 移动端（≤620px） ================= */
+@media (max-width: 620px) {
+  .index-view {
+    gap: 16px;
+  }
+
+  /* 仪表盘 + 等级印章：桌面是「仪表 auto + 印章 1fr」两列，窄屏必须单列，
+     否则 1fr 列被压到 0 宽（印章 111px 溢出行外被裁、等级描述一字一行） */
+  .gauge-wrap {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 12px;
+    padding: 8px 0 6px;
+  }
+  .gauge-meta {
+    align-items: center;
+    gap: 8px;
+  }
+  .gauge-meta .seal {
+    width: 96px;
+    height: 96px;
+    font-size: 30px;
+    border-width: 2px;
+  }
+  .gauge-meta .lv-desc {
+    font-size: 17px;
+    text-align: center;
+  }
+  .lv-legend {
+    justify-content: center;
+    gap: 8px 12px;
+  }
+
+  /* 城市标题：窄屏不再两端对齐（tag 会跑到屏幕外） */
+  .city-title {
+    justify-content: flex-start;
+  }
+  .city-title h3 {
+    font-size: 20px;
+  }
+
+  /* 时间区间选择器：起/止成组换行 + 提示独占一行 */
+  .range-picker {
+    gap: 8px;
+  }
+  .range-picker .range-hint {
+    flex: 1 1 100%;
+  }
+  .date-input,
+  .hour-select {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+
+  /* 行动按钮：竖排铺满，扩大点按目标 */
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .curve-tabs {
+    justify-content: center;
+  }
+
+  .mascot-frame img {
+    width: 168px;
+  }
 }
 </style>

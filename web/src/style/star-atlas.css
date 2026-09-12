@@ -416,6 +416,7 @@ main.frame::-webkit-scrollbar-thumb:hover {
   font-size: 11px;
   letter-spacing: 0.34em;
   color: var(--gold);
+  white-space: nowrap;
 }
 .plate-cap span {
   font-family: var(--cn);
@@ -784,12 +785,93 @@ main.frame::-webkit-scrollbar-thumb:hover {
   .frame {
     padding: 0 16px 80px;
   }
+  /* 报头：窄屏改为「品牌居中 + 导航整行」，否则右侧栏被挤到 ~104px，
+     三个 tab（各 33px）变成一字一行竖排（移动端实测问题） */
+  .mast-top {
+    display: block;
+    padding: 8px 0 0;
+  }
+  .brand {
+    text-align: center;
+  }
+  /* 负右边距是桌面版用来抵消 letter-spacing 尾隙的，窄屏会让盒宽超出容器
+     （报头在 main.frame 之外，不受 overflow-x: clip 保护）→ 移动端归零 */
+  .brand .zh {
+    font-size: 24px;
+    letter-spacing: 0.22em;
+    margin-right: 0;
+  }
+  .brand .en {
+    font-size: 9px;
+    letter-spacing: 0.28em;
+  }
+  .mast-side.right {
+    align-items: stretch;
+    gap: 0;
+  }
+  /* 装饰性元信息在窄屏屈居第二，隐藏以压低 sticky 报头高度 */
+  .mast-side.right .mast-meta {
+    display: none;
+  }
+  .nav {
+    justify-content: center;
+    gap: 0;
+    margin-top: 4px;
+    padding-top: 2px;
+    border-top: 1px dashed var(--line-soft);
+  }
   .nav-tab {
-    padding: 8px 10px 12px;
-    font-size: 12px;
+    /* 必须 nowrap：默认换行会把「观星指数」拆成四行竖排 */
+    flex: 1 1 0;
+    white-space: nowrap;
+    text-align: center;
+    padding: 8px 4px 11px;
+    font-size: 12.5px;
+    letter-spacing: 0.08em;
   }
   .nav-tab .rm {
     display: none;
+  }
+  .nav-tab::after {
+    left: 10px;
+    right: 10px;
+  }
+  /* 页签名已在导航里，窄屏不再重复占一行 */
+  .page-mark {
+    display: none;
+  }
+
+  /* 卷首题签：字降一级，省垂直空间 */
+  .frontispiece {
+    padding: 36px 0 28px;
+  }
+  .f-title h1 {
+    font-size: clamp(40px, 12vw, 60px);
+    letter-spacing: 0.2em;
+    /* 同 brand：负右边距在窄屏会溢出容器，移动端归零 */
+    margin: 6px 0 0;
+  }
+  .f-title .latin {
+    font-size: 11px;
+    letter-spacing: 0.24em;
+    margin: 10px 0 0;
+  }
+  .f-title .motto {
+    margin-top: 12px;
+    font-size: 13px;
+  }
+
+  /* 图版内衬：窄屏收紧内边距，给内容留宽度 */
+  .plate-cap {
+    gap: 10px;
+    padding: 12px 16px;
+  }
+  .plate-body {
+    padding: 18px 16px;
+  }
+  .plate-cap b {
+    /* 「FIG. 2」不允许在字母与序号间断行 */
+    white-space: nowrap;
   }
 }
 @media (prefers-reduced-motion: reduce) {
