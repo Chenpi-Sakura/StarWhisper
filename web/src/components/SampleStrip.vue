@@ -62,11 +62,6 @@ function onPick(sample: QuickSample): void {
         <span class="card-size">{{ s.size }}</span>
       </button>
     </div>
-
-    <p class="strip-foot">
-      样图为真实拍摄星图，已按公网 4MB 约束预压；点击后与自行上传完全同链路（含
-      EXIF 方向校正）。解算需 15–50 秒，请耐心等待。
-    </p>
   </div>
 </template>
 
@@ -209,15 +204,5 @@ function onPick(sample: QuickSample): void {
   color: var(--gold-pale);
   background: rgba(23, 18, 8, 0.6);
   padding: 2px 6px;
-}
-
-.strip-foot {
-  margin: 10px 0 0;
-  font-family: var(--cn);
-  font-size: 11px;
-  line-height: 1.8;
-  letter-spacing: 0.06em;
-  color: var(--ink-faint);
-  text-align: center;
 }
 </style>
