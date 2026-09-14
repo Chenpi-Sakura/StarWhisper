@@ -11,7 +11,7 @@ describe('SampleStrip 样图速测条', () => {
     for (const s of QUICK_SAMPLES) {
       expect(wrapper.find(`[data-testid="sample-card-${s.id}"]`).exists()).toBe(true)
     }
-    expect(wrapper.findAll('.sample-card')).toHaveLength(3)
+    expect(wrapper.findAll('.sample-card')).toHaveLength(2)
   })
 
   it('点击卡片抛出 pick 事件并带上样图对象', async () => {
@@ -27,7 +27,7 @@ describe('SampleStrip 样图速测条', () => {
     const wrapper = mount(SampleStrip, { props: { loadingId: 'test1' } })
     const onPick = vi.fn()
     const busy = wrapper.find('[data-testid="sample-card-test1"]')
-    const other = wrapper.find('[data-testid="sample-card-test4"]')
+    const other = wrapper.find('[data-testid="sample-card-test2"]')
     expect(busy.attributes('disabled')).toBeDefined()
     expect(other.attributes('disabled')).toBeDefined()
     expect(busy.classes()).toContain('busy')

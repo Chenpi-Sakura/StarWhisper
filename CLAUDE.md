@@ -51,7 +51,7 @@ web/                     Vue 3 + Vite + TS + Pinia + vitest + jsdom
     api/                 solve.ts / story.ts（streamStory）/ health.ts / atlas.ts
                          / stargaze.ts / geocoding.ts（在线兜底，限 countryCode=CN）
     utils/               exif / heic / stargazeRange（区间选择）/ cityTrie（中文城市前缀树）
-  public/samples/        离线 mock fixture + 样图 + 样图速测素材（quick-test{1,2,4}{,-thumb}.jpg，
+  public/samples/        离线 mock fixture + 样图 + 样图速测素材（quick-test{1,2}{,-thumb}.jpg，
                          由 scripts/prepare_quick_samples.py 生成）
   tests/                 vitest（279 个用例，覆盖 store/router/组件/数据产物四类）
 ```
@@ -173,7 +173,7 @@ pnpm build               # vue-tsc --noEmit + vite build
 
 ### 样图速测（ScanView idle / error 态）
 
-评审与测试者手边常没有星图，故把三张**已实测可解算**的真实星图挂到识别页旁边，点一下即
+评审与测试者手边常没有星图，故把两张**已实测可解算**的真实星图挂到识别页旁边，点一下即
 = 选图 + 解算。链路要点：
 
 - 素材由 `scripts/prepare_quick_samples.py` 生成，**直接 import 服务端生产函数**
@@ -182,8 +182,8 @@ pnpm build               # vue-tsc --noEmit + vite build
   **不存在样图专用后门**：前端仍照常读 EXIF Orientation 并传 `orientation` 字段。
 - 全尺寸 `quick-testN.jpg` 参与解算；`quick-testN-thumb.jpg`（480px，已 exif_transpose 转正）
   仅供列表展示，绝不用作上传源。
-- 2026-09-14 真实上游实测：test1 19.9s / test2 13.0s / test4 51.3s（test4 视场 54°×36° 最慢，
-  接近 `ASTROMETRY_TIMEOUT=60`，换图时优先选视场小的）。
+- 2026-09-14 真实上游实测：test1 19.9s / test2 13.0s。**不要拿视场 >40° 且星点稀疏的图当样图**
+  （曾用 test4 广域 54°×36°，上游 51.3s 已贴近 `ASTROMETRY_TIMEOUT=60`，演示体验差，已移除）。
 - `web/tests/quickSamples.test.ts` 读磁盘校验素材完整性（存在 / JPEG magic / ≤4MB /
   元数据 size 文案与真实体积一致）——重压或换图后须重跑脚本，否则该测试会红。
 

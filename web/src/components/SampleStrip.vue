@@ -93,7 +93,8 @@ function onPick(sample: QuickSample): void {
 
 .strip-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* 按样图数量自适应（当前 2 张，加回样图无需改样式） */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
   margin-top: 12px;
 }

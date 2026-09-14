@@ -1,6 +1,6 @@
-"""生成「星空识别」页的样图快速测试素材（test1 / test2 / test4 三张）。
+"""生成「星空识别」页的样图快速测试素材（test1 / test2 两张）。
 
-用途：识别页 idle 态展示三张真实星图缩略图，评审 / 测试者点一下即可完成一次
+用途：识别页 idle 态展示两张真实星图缩略图，评审 / 测试者点一下即可完成一次
 端到端识别，无需自己找星图。
 
 为什么不在浏览器里现压：见 CLAUDE.md「公网 4MB 约束」——canvas / mozjpeg-wasm
@@ -10,8 +10,8 @@
 同样保留 EXIF），生成的文件与"用户上传原图经服务端重压后发给上游"的产物等价。
 
 产物（均在 web/public/samples/，入库）：
-- quick-test{1,2,4}.jpg        全尺寸样图（≤4MB，保留 EXIF 含 Orientation / FocalLength）
-- quick-test{1,2,4}-thumb.jpg  列表缩略图（480px 宽，按 EXIF 转正，不用于解算）
+- quick-test{1,2}.jpg          全尺寸样图（≤4MB，保留 EXIF 含 Orientation / FocalLength）
+- quick-test{1,2}-thumb.jpg    列表缩略图（480px 宽，按 EXIF 转正，不用于解算）
 
 运行：
     server/.venv/Scripts/python.exe scripts/prepare_quick_samples.py
@@ -33,7 +33,7 @@ from services.jpeg_recompress import (  # noqa: E402
 
 SOURCE_DIR = REPO_ROOT / "assets"
 OUT_DIR = REPO_ROOT / "web" / "public" / "samples"
-SAMPLES = ("test1", "test2", "test4")
+SAMPLES = ("test1", "test2")
 THUMB_WIDTH = 480
 THUMB_QUALITY = 72
 

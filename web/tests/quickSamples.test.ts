@@ -15,8 +15,8 @@ const SAMPLES_DIR = resolve(__dirname, '..', 'public', 'samples')
 const MAX_BYTES = 4 * 1024 * 1024
 
 describe('样图速测素材', () => {
-  it('固定三张：test1 / test2 / test4', () => {
-    expect(QUICK_SAMPLES.map((s) => s.id)).toEqual(['test1', 'test2', 'test4'])
+  it('固定两张：test1 / test2', () => {
+    expect(QUICK_SAMPLES.map((s) => s.id)).toEqual(['test1', 'test2'])
   })
 
   it.each(QUICK_SAMPLES)('$id 全尺寸样图存在、是 JPEG 且 ≤4MB', (s) => {

@@ -236,7 +236,7 @@ async function onFileChange(event: Event) {
 }
 
 /* ================= 样图速测 =================
-   评审 / 测试者手边往往没有星图。这里把 assets 里三张已验证可解算的真实星图
+   评审 / 测试者手边往往没有星图。这里把 assets 里两张已验证可解算的真实星图
    （预压到 ≤4MB，见 scripts/prepare_quick_samples.py）挂到 idle 态旁边，
    点一下 = 选图 + 立刻解算。下载与上传走的是与手动选文件完全相同的链路
    （同一 selectImage / solve），因此 EXIF 方向校正、服务端重压、失败映射
@@ -619,7 +619,7 @@ watch(
         </div>
       </div>
       <!-- 失败原因常常是照片本身不适合解算（云多 / 星点少 / 视场过大），
-           就地给三张已验证可解算的样图，让测试者能立刻区分"图的问题"与"服务的问题" -->
+           就地给两张已验证可解算的样图，让测试者能立刻区分"图的问题"与"服务的问题" -->
       <div class="error-samples">
         <SampleStrip :loading-id="sampleLoadingId" @pick="onSamplePick" />
       </div>
