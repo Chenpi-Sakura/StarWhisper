@@ -3,16 +3,20 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { useScanStore } from '../stores/scan'
 import { useAtlasStore } from '../stores/atlas'
+import { useToastStore } from '../stores/toast'
 import { isHeic } from '../utils/heic'
 import StarCanvas from '../components/StarCanvas.vue'
 import StoryPanel from '../components/StoryPanel.vue'
+import SampleStrip from '../components/SampleStrip.vue'
 import PlateBox from '../components/common/PlateBox.vue'
 import StarBtn from '../components/common/StarBtn.vue'
 import StarChip from '../components/common/StarChip.vue'
+import type { QuickSample } from '../data/samples'
 import type { ConstellationAtlas } from '../types'
 
 const scan = useScanStore()
 const atlasStore = useAtlasStore()
+const toast = useToastStore()
 
 const isMock = new URLSearchParams(window.location.search).has('mock')
 type OverlayMode = 'overlay' | 'atlas'
@@ -231,6 +235,34 @@ async function onFileChange(event: Event) {
   await scan.solve(isMock)
 }
 
+/* ================= 样图速测 =================
+   评审 / 测试者手边往往没有星图。这里把 assets 里三张已验证可解算的真实星图
+   （预压到 ≤4MB，见 scripts/prepare_quick_samples.py）挂到 idle 态旁边，
+   点一下 = 选图 + 立刻解算。下载与上传走的是与手动选文件完全相同的链路
+   （同一 selectImage / solve），因此 EXIF 方向校正、服务端重压、失败映射
+   全部一并验到，不存在"样图专用后门"。 */
+const sampleLoadingId = ref<string | null>(null)
+
+async function onSamplePick(sample: QuickSample) {
+  if (sampleLoadingId.value || scan.status === 'uploading') return
+  sampleLoadingId.value = sample.id
+  try {
+    const res = await fetch(sample.src)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const blob = await res.blob()
+    const file = new File([blob], sample.fileName, { type: 'image/jpeg' })
+    heicNotice.value = false
+    scan.selectImage(file)
+    await scan.solve(isMock)
+  } catch (err) {
+    // 样图是静态资源，取不到通常是部署漏了 public/samples —— 明确报出来
+    const detail = err instanceof Error ? err.message : String(err)
+    toast.show(`样图载入失败：${detail}`, 'error')
+  } finally {
+    sampleLoadingId.value = null
+  }
+}
+
 // done 态下切换 tradition：仅前端过滤展示，不触发 re-solve
 // （astrometry 与 tradition 无关，重解只是白白浪费 20s 上游调用）
 function onTraditionChange(next: '' | 'western' | 'chinese') {
@@ -356,6 +388,7 @@ watch(
           </div>
         </label>
         <p v-if="heicNotice" class="chip warn inline">HEIC 将由服务器自动转换为 JPG</p>
+        <SampleStrip :loading-id="sampleLoadingId" @pick="onSamplePick" />
       </div>
     </PlateBox>
 
@@ -584,6 +617,11 @@ watch(
           <StarBtn label="↻ 重试一次" variant="seal" size="sm" @click="scan.solve(isMock)" />
           <StarBtn label="换一张" variant="ghost" size="sm" @click="scan.reset()" />
         </div>
+      </div>
+      <!-- 失败原因常常是照片本身不适合解算（云多 / 星点少 / 视场过大），
+           就地给三张已验证可解算的样图，让测试者能立刻区分"图的问题"与"服务的问题" -->
+      <div class="error-samples">
+        <SampleStrip :loading-id="sampleLoadingId" @pick="onSamplePick" />
       </div>
     </PlateBox>
   </div>
@@ -1034,6 +1072,11 @@ watch(
 }
 
 /* error-card */
+.error-samples {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--line-soft);
+}
 .error-card {
   display: flex;
   flex-direction: column;

@@ -694,3 +694,74 @@ describe('ScanView overlay opacity slider', () => {
     expect(overlayCanvas2!.props('overlayOpacity')).toBeCloseTo(0.4)
   })
 })
+describe('ScanView 样图速测', () => {
+  /** 拦截样图静态资源下载，返回一段可被 new File() 包起来的 JPEG 字节。 */
+  function stubSampleFetch(url: string) {
+    const calls: string[] = []
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+      const u = String(input)
+      calls.push(u)
+      if (u === url) {
+        return Promise.resolve(new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xdb]), {
+          status: 200,
+          headers: { 'content-type': 'image/jpeg' },
+        }))
+      }
+      return Promise.resolve(new Response('{}', { status: 404 }))
+    }))
+    return calls
+  }
+
+  it('点击样图 → 下载 → 走同一条 selectImage + solve 链路', async () => {
+    solveImageMock.mockResolvedValue(SAMPLE_RESULT)
+    getConstellationMock.mockResolvedValue(SAMPLE_ATLAS)
+    const calls = stubSampleFetch('/samples/quick-test1.jpg')
+
+    const ScanView = (await import('../src/views/ScanView.vue')).default
+    const wrapper = mount(ScanView)
+
+    // idle 态应能看到样图条
+    expect(wrapper.find('[data-testid="sample-strip"]').exists()).toBe(true)
+    await wrapper.find('[data-testid="sample-card-test1"]').trigger('click')
+    await flushPromises()
+    await new Promise((r) => setTimeout(r, 10))
+    await flushPromises()
+
+    expect(calls).toContain('/samples/quick-test1.jpg')
+    const { useScanStore } = await import('../src/stores/scan')
+    const s = useScanStore()
+    expect(s.imageFile?.name).toBe('quick-test1.jpg')
+    expect(solveImageMock).toHaveBeenCalledTimes(1)
+    // 交给 store 的是真 File，且带 image/jpeg MIME（服务端重压 / 上游都靠它判断）
+    const sent = solveImageMock.mock.calls[0][0] as File
+    expect(sent.name).toBe('quick-test1.jpg')
+    expect(sent.type).toBe('image/jpeg')
+    expect(s.status).toBe('done')
+  })
+
+  it('样图下载失败时不进入解算，回落到 idle 并提示', async () => {
+    solveImageMock.mockResolvedValue(SAMPLE_RESULT)
+    getConstellationMock.mockResolvedValue(SAMPLE_ATLAS)
+    stubSampleFetch('/samples/never-matches.jpg')
+
+    const ScanView = (await import('../src/views/ScanView.vue')).default
+    const wrapper = mount(ScanView)
+    const { useScanStore } = await import('../src/stores/scan')
+    const { useToastStore } = await import('../src/stores/toast')
+    const s = useScanStore()
+    const toast = useToastStore()
+
+    await wrapper.find('[data-testid="sample-card-test2"]').trigger('click')
+    await flushPromises()
+    await new Promise((r) => setTimeout(r, 10))
+    await flushPromises()
+
+    expect(solveImageMock).not.toHaveBeenCalled()
+    expect(s.status).toBe('idle')
+    expect(toast.items.some((t) => t.message.includes('样图载入失败'))).toBe(true)
+    // 失败后按钮重新可用
+    expect(
+      wrapper.find('[data-testid="sample-card-test1"]').attributes('disabled'),
+    ).toBeUndefined()
+  })
+})

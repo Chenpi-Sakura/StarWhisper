@@ -53,3 +53,6 @@ Thumbs.db
 星语天象StarWhisper+chenpisakura+v2.0+15583790061/
 星语天象StarWhisper+chenpisakura+v2.0+15583790061.zip
 starwhisper-ppt/
+
+# ---- 本地临时验证产物（e2e curl 响应 / dev server 日志）----
+.tmp-e2e/

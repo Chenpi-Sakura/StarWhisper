@@ -43,14 +43,17 @@ web/                     Vue 3 + Vite + TS + Pinia + vitest + jsdom
   src/
     stores/              scan / atlas / story（fetchStoryStream 真 SSE）/ stargaze / toast
     views/               ScanView / ConstellationView / IndexView（观星指数）
-    components/          StarCanvas（overlay + atlas 三模式）/ StoryPanel / AtlasStoryStatic
-                         / AtlasTraditionTabs / index（IndexGauge/TrendBars/MoonCard/CitySearch）
+    components/          StarCanvas（overlay + atlas 三模式）/ StoryPanel / SampleStrip（样图速测）
+                         / AtlasStoryStatic / AtlasTraditionTabs
+                         / index（IndexGauge/TrendBars/MoonCard/CitySearch）
                          / common（PlateBox/StarBtn/StarChip）
+    data/                samples.ts（样图速测元数据：视场/体积/预计耗时/预期命中）
     api/                 solve.ts / story.ts（streamStory）/ health.ts / atlas.ts
                          / stargaze.ts / geocoding.ts（在线兜底，限 countryCode=CN）
     utils/               exif / heic / stargazeRange（区间选择）/ cityTrie（中文城市前缀树）
-  public/samples/        离线 mock fixture + 样图
-  tests/                 vitest（223 个用例，覆盖 store/router/组件/数据产物四类）
+  public/samples/        离线 mock fixture + 样图 + 样图速测素材（quick-test{1,2,4}{,-thumb}.jpg，
+                         由 scripts/prepare_quick_samples.py 生成）
+  tests/                 vitest（279 个用例，覆盖 store/router/组件/数据产物四类）
 ```
 
 ---
@@ -87,7 +90,7 @@ curl http://127.0.0.1:8000/api/health
 ```bash
 cd web
 pnpm install
-pnpm test                # vitest run（223 个用例）
+pnpm test                # vitest run（279 个用例）
 pnpm test -- utils.exif  # 跑文件名包含 utils.exif 的
 pnpm dev                 # :5173（已配 /api 代理到 :8000）
 pnpm gen:cities          # 重新生成中国城市前缀数据（一次联网，改城市表时才需要）
@@ -165,8 +168,24 @@ pnpm build               # vue-tsc --noEmit + vite build
 ## 测试基础设施
 
 - 后端 214 测试：identify + jpeg_recompress + traditions + story (P0/P1/P2 全覆盖) + index/astro
-- 前端 223 测试：jsdom + setup polyfill（URL.createObjectURL）；含城市数据产物校验与搜索交互
+- 前端 279 测试：jsdom + setup polyfill（URL.createObjectURL）；含城市数据产物校验与搜索交互
 - e2e：test1/test2/test3 三张真实星图（`assets/test*.jpg`），test1 是 D610 MPO 24MP 长焦样图
+
+### 样图速测（ScanView idle / error 态）
+
+评审与测试者手边常没有星图，故把三张**已实测可解算**的真实星图挂到识别页旁边，点一下即
+= 选图 + 解算。链路要点：
+
+- 素材由 `scripts/prepare_quick_samples.py` 生成，**直接 import 服务端生产函数**
+  `services.jpeg_recompress.recompress_jpeg_to_target`（同 4MB target / 同 q90→q85→q80 阶梯 /
+  同保留 EXIF）。因此样图与"用户上传原图经服务端重压后发给上游"的产物等价，
+  **不存在样图专用后门**：前端仍照常读 EXIF Orientation 并传 `orientation` 字段。
+- 全尺寸 `quick-testN.jpg` 参与解算；`quick-testN-thumb.jpg`（480px，已 exif_transpose 转正）
+  仅供列表展示，绝不用作上传源。
+- 2026-09-14 真实上游实测：test1 19.9s / test2 13.0s / test4 51.3s（test4 视场 54°×36° 最慢，
+  接近 `ASTROMETRY_TIMEOUT=60`，换图时优先选视场小的）。
+- `web/tests/quickSamples.test.ts` 读磁盘校验素材完整性（存在 / JPEG magic / ≤4MB /
+  元数据 size 文案与真实体积一致）——重压或换图后须重跑脚本，否则该测试会红。
 
 ### 故事组件关键事实（P0/P1/P2 之后）
 
