@@ -66,7 +66,11 @@ watch(
     const ctx = buildContext()
     if (!ctx) return
     try {
-      await story.fetchPhotoStory(ctx, scan.selectedStyle, 'refetch')
+      // 每次新 solve 强制重新讲述：
+      // - 'refetch' 会命中前一次的 current.value（photo-level 走 style 匹配复用），
+      //   导致连续识图看不到新故事；
+      // - 'fresh' 走 cache_bust=1，后端跳过缓存读，每次都调 AI 真生成。
+      await story.fetchPhotoStory(ctx, scan.selectedStyle, 'fresh')
     } catch (e) {
       if ((e as Error).name !== 'AbortError') console.error('[StoryPanel]', e)
     }

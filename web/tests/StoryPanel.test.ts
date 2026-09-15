@@ -19,7 +19,7 @@ const sampleSolve = {
 }
 
 describe('StoryPanel photo-level 触发', () => {
-  it('solveId 变化触发 fetchPhotoStory', async () => {
+  it('solveId 变化触发 fetchPhotoStory（fresh 模式：每次重新讲述）', async () => {
     const scan = useScanStore()
     const story = useStoryStore()
     const spy = vi.spyOn(story, 'fetchPhotoStory').mockResolvedValue({
@@ -33,10 +33,38 @@ describe('StoryPanel photo-level 触发', () => {
     await wrapper.vm.$nextTick()
     await new Promise((r) => setTimeout(r, 0))
 
+    // 评审体验修复（2026-09-15）：之前传 'refetch' 会在 store 层
+    // 命中 current.value 复用，导致连续识图看不到新故事。
+    // 现在传 'fresh'，后端走 cache_bust=1 强制重生成。
     expect(spy).toHaveBeenCalledWith(
       expect.objectContaining({ constellations: expect.any(Array) }),
-      'myth', 'refetch',
+      'myth', 'fresh',
     )
+  })
+
+  it('连续 solveId 变化都触发 fresh（不被 store 缓存复用）', async () => {
+    const scan = useScanStore()
+    const story = useStoryStore()
+    const spy = vi.spyOn(story, 'fetchPhotoStory').mockResolvedValue({
+      ok: true, abbr: '', style: 'myth', title: 'T', paragraphs: ['p'],
+      provider: 'mock', model: 'm', latency_ms: 0, cached: false, degraded: false,
+    })
+
+    scan.result = sampleSolve
+    scan.solveId = 'solve-1'
+    const wrapper = mount(StoryPanel)
+    await wrapper.vm.$nextTick()
+    await new Promise((r) => setTimeout(r, 0))
+    spy.mockClear()
+
+    // 第二次解图：同一张照片 + 同 style。'refetch' 模式下会复用 current.value，
+    // 走不到 fetchPhotoStory。'fresh' 模式必走 store（传 cache_bust=1 强制后端重生成）。
+    scan.solveId = 'solve-2'
+    await wrapper.vm.$nextTick()
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(spy).toHaveBeenCalledWith(expect.anything(), 'myth', 'fresh')
   })
 
   it('chip 切换不触发 fetchPhotoStory（activeAbbr 变化不影响）', async () => {
