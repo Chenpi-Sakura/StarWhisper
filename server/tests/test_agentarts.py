@@ -239,6 +239,32 @@ def test_chat_authorization_bearer():
     assert seen_auth[0] == "Bearer k"
 
 
+def test_chat_url_includes_endpoint_latest_query():
+    """回归：AgentArts invocations URL 必须带 `?endpoint=Latest`。
+
+    背景：平台路由配置为“严格匹配”，控制台访问地址
+    https://.../runtimes/<name>/invocations?endpoint=Latest，
+    不带该 query 会被 API 网关拒为 404 "No matching policy found"
+    （评审期间线上故障，2026-09-15 定位修复）。
+    """
+    seen_urls: list[str] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        seen_urls.append(str(request.url))
+        return httpx.Response(200, content=b'data: {"event":"end"}\n')
+
+    p = AgentArtsProvider(
+        api_key="k",
+        base_url="https://x.example",
+        runtime_name="rt-name",
+    )
+    p._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    _run(p.chat("sys", "usr"))
+
+    assert len(seen_urls) == 1
+    assert seen_urls[0].endswith("/runtimes/rt-name/invocations?endpoint=Latest")
+
+
 # ---- health ----
 
 

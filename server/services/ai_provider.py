@@ -308,8 +308,15 @@ class AgentArtsProvider(AIProvider):
         P0-1 修复：平台只有 `inputs.query` 一个入参、没有 system 角色位。
         `AGENTARTS_SYSTEM_IN_QUERY=1`（默认）时把 system prompt 拼进 query，
         否则 myth_pool_rule 等按 tradition 分流的约束不会生效。
+
+        路由配置"严格匹配"：控制台访问地址带 `?endpoint=Latest`，
+        不带该 query 会被 API 网关拒为 404 "No matching policy found"
+        （评审期间线上故障，2026-09-15 定位）。
         """
-        url = f"{self._base_url}/runtimes/{self._runtime_name}/invocations"
+        url = (
+            f"{self._base_url}/runtimes/{self._runtime_name}/invocations"
+            f"?endpoint=Latest"
+        )
         session_id = uuid.uuid4().hex
         if AGENTARTS_SYSTEM_IN_QUERY and system:
             query = f"[系统设定]\n{system}\n\n[用户请求]\n{user}"
