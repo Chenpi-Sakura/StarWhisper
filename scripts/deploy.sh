@@ -35,6 +35,29 @@ info()  { echo -e "${C_GREEN}[✓]${C_RESET} $*"; }
 warn()  { echo -e "${C_YELLOW}[!]${C_RESET} $*"; }
 fail()  { echo -e "${C_RED}[✗]${C_RESET} $*" >&2; exit 1; }
 
+# 按端口清理残留进程。
+# 背景：历史上用 `setsid` 启动 uvicorn / vite preview 让它们脱离 tmux 进程树
+# （防 SIGHUP 挂死），但副作用是 `tmux kill-session` 杀不掉它们，端口仍被占，
+# 新进程静默启动失败（Errno 98 address already in use）并继续跑旧代码——
+# 线上表现为"改了代码但行为没变 + 500 难排查"。这里在起新 session 前
+# 按端口兜底清理：先 SIGTERM，2s 后仍在则 SIGKILL。
+kill_port_owners() {
+    local port="$1"
+    local pids
+    pids=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K[0-9]+' | sort -u)
+    [[ -z "$pids" ]] && return 0
+    warn "端口 $port 仍被占用（tmux 外的孤儿进程），清理: $pids"
+    kill -TERM $pids 2>/dev/null || true
+    for _ in 1 2 3 4; do
+        sleep 1
+        pids=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K[0-9]+' | sort -u)
+        [[ -z "$pids" ]] && { info "端口 $port 已释放"; return 0; }
+    done
+    warn "端口 $port 仍占用，SIGKILL: $pids"
+    kill -KILL $pids 2>/dev/null || true
+    sleep 1
+}
+
 cd "$REPO"
 
 # ---- 0. 预检 ----
@@ -94,9 +117,10 @@ cd "$REPO"
 echo "▶ 重建 tmux session: $API_SESSION"
 tmux kill-session -t "$API_SESSION" 2>/dev/null || true
 sleep 1
+kill_port_owners 8000
 tmux new-session -d -s "$API_SESSION" -c "$REPO/server"
 tmux send-keys -t "$API_SESSION" \
-    "PYTHONUNBUFFERED=1 $CONDA_ENV/bin/uvicorn main:app --host 127.0.0.1 --port 8000 2>&1 | tee .runtime/api.log"
+    "PYTHONUNBUFFERED=1 $CONDA_ENV/bin/uvicorn main:app --host 127.0.0.1 --port 8000 >> .runtime/api.log 2>&1"
 tmux send-keys -t "$API_SESSION" Enter
 info "后端 session 已启动"
 
@@ -104,14 +128,22 @@ info "后端 session 已启动"
 echo "▶ 重建 tmux session: $PREVIEW_SESSION"
 tmux kill-session -t "$PREVIEW_SESSION" 2>/dev/null || true
 sleep 1
+kill_port_owners 12001
 tmux new-session -d -s "$PREVIEW_SESSION" -c "$REPO/web"
-tmux send-keys -t "$PREVIEW_SESSION" "pnpm preview --host 0.0.0.0 --port 12001 --strictPort 2>&1 | tee ../server/.runtime/preview.log"
+tmux send-keys -t "$PREVIEW_SESSION" "pnpm preview --host 0.0.0.0 --port 12001 --strictPort >> ../server/.runtime/preview.log 2>&1"
 tmux send-keys -t "$PREVIEW_SESSION" Enter
 info "前端 session 已启动"
 
 # ---- 6. 冒烟测试 ----
 echo "▶ 等待服务启动..."
 sleep 8
+
+# 端口必须在监听：Errno 98 时uvicorn 会静默退出（不报错到终端），
+# 页面却还在跑旧代码——这是最难查的一类坑，必须显式断言。
+for port in 8000 12001; do
+    ss -tln 2>/dev/null | grep -q ":${port} " \
+        || fail "端口 $port 未监听（启动失败？看 .runtime/*.log，多半是端口冲突或依赖缺失）"
+done
 
 HEALTH=$(curl -s -m 5 http://127.0.0.1:8000/api/health || echo "")
 if echo "$HEALTH" | grep -q '"ok":true'; then
@@ -136,3 +168,13 @@ echo "  前端日志: tail -f $REPO/server/.runtime/preview.log"
 echo "  进入会话: tmux attach -t $API_SESSION  (Ctrl+B D 退出)"
 echo "  域名地址: https://starwhisper.caipiischenpi.top/"
 echo "================================="
+
+# 部署后额外探测 /api/index：它依赖 astropy IERS 表，是典型的
+# "平时绿、满30 天突然 500" 的时间炸弹（见 8625fa7 修复）。
+INDEX_CODE=$(curl -s -m 20 -o /dev/null -w "%{http_code}" \
+    "http://127.0.0.1:8000/api/index?lat=30.5838&lon=103.9873&hours=24" || echo "0")
+if [[ "$INDEX_CODE" == "200" ]]; then
+    info "观星指数 /api/index 200"
+else
+    warn "观星指数 /api/index 返回 $INDEX_CODE（若为 500，多半又是 astropy IERS 超龄）"
+fi
