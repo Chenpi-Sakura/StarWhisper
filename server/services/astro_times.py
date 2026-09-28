@@ -5,6 +5,10 @@
   （*_events 系列共享一条序列，出一对升/落只扫一次）
 - 时间统一 Asia/Shanghai，输出 "HH:MM"；事件不可见（极昼/极区/窗口外）→ None
 - astropy IERS 自动下载必须关闭（离线环境防卡死）
+- astropy `auto_max_age` 必须置 None：IERS-A 表的**实测段**会随时间变陈旧，
+  超过 30 天后 `iers_table.ut1_utc()` 直接抛 ValueError（线上 500
+  「天象未明 / 天气服务暂不可用」）。观星指数只用 UT1-UTC 做秒级修正，
+  陈旧数据完全够用，不值得为它把服务打挂。
 """
 
 from datetime import date, datetime, timedelta
@@ -19,6 +23,8 @@ from astral.sun import sunset as _astral_sunset
 from astropy.utils.iers import conf as _iers_conf
 
 _iers_conf.auto_download = False  # 离线环境防 IERS 联网卡死
+# 允许使用任意年龄的 IERS 数据（默认 30 天上限会让 UT1-UTC 插值抛 ValueError）
+_iers_conf.auto_max_age = None
 
 from astropy import units as u
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord, get_body
