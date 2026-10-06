@@ -1,7 +1,6 @@
 # ---- 本地工具生成物 / 索引 ----
-.codegraph/
-.codeartsdoer/
 .superpowers/
+.workbuddy/
 .trae-html-share-packages/
 
 # ---- IDE / 编辑器 ----
@@ -41,18 +40,16 @@ web/.runtime/
 # ---- 系统 ----
 .DS_Store
 Thumbs.db
-# ---- WorkBuddy 本地数据 ----
-.workbuddy/
 
-# ---- 比赛提交物（OPC 大赛本地留底，不入库）----
+# ---- 比赛提交物 / 本地大文件（不入库）----
+# 全部收在 _archive/ 下：ppt 与提交 zip、行程与授权材料、PPT 生成工程
+_archive/
 作品提交文件夹/
-
-# ---- 决赛素材 / 本地大文件（不入库）----
-决赛素材交付/
-图片证据/
 星语天象StarWhisper+chenpisakura+v2.0+15583790061/
 星语天象StarWhisper+chenpisakura+v2.0+15583790061.zip
 starwhisper-ppt/
+决赛素材交付/
+图片证据/
 
 # ---- 本地临时验证产物（e2e curl 响应 / dev server 日志）----
 .tmp-e2e/

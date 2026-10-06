@@ -1,148 +1,170 @@
 # 星语天象 StarWhisper
 
 > 「拍照识星座 · 星座动起来 · AI 讲神话」—— 2026 华为云 OPC 创意大赛参赛作品。
-> 当前里程碑：**M1 工程骨架**（mock 全链路 + 官方样图对齐）。
+> 当前里程碑：**M2（真实解算 + AI 故事 + atlas 多 tradition 落地）**。
 
 ## 1. 项目简介
 
-StarWhisper 让用户拍下的星空"开口说话"——上传一张星空照片，自动识别画面内的星座并叠加连线，定位到具体星名后由 AI 讲述背后的神话故事。M1 阶段已打通 **「选图 → mock 识别 → 像素对齐 overlay」** 完整闭环，绑定官方样图 `orion.jpg` 用于评审演示。
+StarWhisper 让用户拍下的星空"开口说话"——上传一张星空照片，后端把图转给上游 astrometry.net 解算，
+再用 astropy 做 WCS 投影把命中星座、亮星、连线的**像素坐标**算出来，前端叠加到照片上；
+最后由 AI 按神话 / 科普两种视角讲述这片天空背后的故事。
 
-详细设计与里程碑见：
+当前已打通 **「选图 → 真实解算 → 星座 overlay → 星图鉴 → AI 故事」** 完整闭环，
+支持 western（89 星座）与 chinese（310 星官）两套 tradition。
 
-- 设计规格：`docs/specs/2026-08-21-starwhisper-design.md`
-- 实施计划：`docs/plans/2026-08-22-starwhisper-m1-scaffold.md`
-- 项目简报：`docs/PROJECT_BRIEF.md`
-- 上游 Astrometry 文档：`docs/API.md`
+设计与实现文档见：
+
+- 开发指南（含架构事实与已知边界）：`CLAUDE.md`
+- 上游接口事实源（改 identify 前必读）：`docs/API.md`
+- 项目简报与评分口径：`docs/PROJECT_BRIEF.md`
+- 设计规格：`docs/specs/` ｜ 实施计划：`docs/plans/` ｜ 修复记录：`docs/fix-notes/`
 
 ## 2. 仓库结构
 
+版本控制只跟踪**代码、测试与文档**。比赛交付物料、PPT 工程、工具索引一律不入库。
+
 ```
-server/                          # FastAPI 后端（Python 3.11+，pytest）
-├── main.py                      # 入口，挂载 routers + CORS + 健康检查
-├── config.py                    # ASTROMETRY_SERVICE_URL / CORS_ORIGINS
-├── routers/
-│   ├── constellation.py         # GET /api/constellation/{abbr}（大小写不敏感, 404 JSONResponse）
-│   └── identify.py              # POST /api/identify/solve（M1 mock, 800ms delay, 400/413 校验）
-├── services/constellation.py    # 内置星座星表查询
+server/                       FastAPI 后端（Python 3.11+，pytest）
+├── main.py                   入口；routers + CORS + traditions 启动加载
+├── config.py                 .env 自动加载 + 上游地址 / MOCK 开关 / 超时
+├── routers/                  HTTP 边界
+│   ├── identify.py           POST /api/identify/solve（重压 + 上游解算 + 失败映射）
+│   ├── story.py              AI 故事（SSE 流式）
+│   ├── atlas_story.py        星图鉴故事
+│   ├── atlas_nota.py         识读小笺
+│   ├── traditions.py         /api/traditions 多 tradition 数据
+│   ├── constellations.py     /api/constellations
+│   ├── constellation.py      /api/constellation/{abbr}
+│   ├── index.py              观星指数
+│   └── health.py             /api/health（上游 + AI provider 状态）
+├── services/                 业务逻辑（无 FastAPI 依赖，方便单测）
+│   ├── astrometry.py         WCS 投影（astropy）
+│   ├── traditions.py         多 tradition 星表 + find_nearest
+│   ├── jpeg_recompress.py    公网 ≤4MB 约束的 PIL libjpeg 自适应重压
+│   ├── ai_provider.py        OpenAI 兼容 + AgentArts 双 provider（含真流式 SSE）
+│   ├── story_fallback.py     AI 不可用时的离线预设
+│   ├── constellation.py      星座详情
+│   └── weather.py            Open-Meteo 观星指数四档
 ├── data/
-│   ├── constellations.json      # 5 星座源文件（单源）
-│   └── fixtures/solve_orion.json# M1 mock 样图 fixture（8 星 + 10 线）
-└── tests/                       # pytest: 9 个用例
+│   ├── traditions/western/   89 个星座 json
+│   ├── traditions/chinese/   310 个星官 json
+│   ├── raw/                  celestial_data 原始数据（构建输入）
+│   ├── fixtures/             mock 与 e2e fixture
+│   ├── bayer_index.json
+│   └── bortle_cities.json
+├── scripts/                  星表构建与校验（build_* / enrich_* / validate / wcs_regression）
+├── tests/                    pytest（28 个文件，265 通过 / 32 需联网 deselect）
+└── .venv/                    唯一的 Python 虚拟环境（gitignored）
 
-web/                             # Vue 3 + Vite + TS + pnpm + vitest
-├── index.html
-├── vite.config.ts               # 自定义 plugin 同步 constellations.json (dev + build)
-├── vitest.config.ts             # jsdom + setup polyfill (URL.createObjectURL)
-├── public/samples/              # 离线 mock fixture + 样图（与 server fixture hash 一致）
-└── src/
-    ├── main.ts                  # createApp + Pinia
-    ├── App.vue                  # 报头 + 三 tab + StarToast
-    ├── views/
-    │   ├── ScanView.vue         # 6 状态全链路 + 照片叠层 + scan-atlas 切换
-    │   ├── IndexView.vue        # 观星指数 M2 占位
-    │   └── ConstellationView.vue# 星座图鉴 M2 占位
-    ├── components/
-    │   ├── StarCanvas.vue       # overlay（像素映射 + lineTo）+ scan-atlas（同心圆 + 网格）
-    │   └── common/              # PlateBox / StarChip / StarBtn / StarToast
-    ├── stores/                  # toast store + scan store（6 态 + 真 65s timeout）
-    ├── api/solve.ts             # fetch 封装（AbortSignal.timeout 65s + mock 800ms）
-    ├── data/constellations.json # plugin 从 server/data/ 拷贝
-    ├── types.ts                 # SolveResult 正式 interface
-    └── style/star-atlas.css     # 仿古星图册变量（羊皮纸 / 金墨 / 印章）
+web/                          Vue 3 + Vite + TS + Pinia + vitest + jsdom
+├── scripts/gen-cities.mjs    生成 public/data/cn-cities.json（一次联网）
+├── public/
+│   ├── data/cn-cities.json   3237 条中文城市前缀表
+│   └── samples/              离线 mock fixture + 样图 + 样图速测素材
+├── src/
+│   ├── stores/               scan / atlas / story / stargaze / toast
+│   ├── views/                ScanView / ConstellationView / IndexView
+│   ├── components/           StarCanvas / StoryPanel / SampleStrip / index/* / common/*
+│   ├── api/                  solve / story / health / atlas / stargaze / geocoding
+│   └── utils/                exif / heic / stargazeRange / cityTrie
+└── tests/                    vitest（35 个文件，278 个用例）
+
+docs/                         全部文档（specs / plans / fix-notes / business / manual / backlog / prompts）
+assets/                       真实星图样张 + 中西星名对照数据（被测试与构建脚本引用）
+concepts/                     设计原型 HTML
+scripts/                      部署与样图素材准备
+_archive/                     比赛交付物料 + PPT 工程（本地留底，不入库）
 ```
 
-## 3. 启动方式
-
-### 后端（FastAPI）
+## 3. 环境准备
 
 ```bash
-# 创建并激活项目虚拟环境（依赖 fastapi/uvicorn/httpx/python-multipart/pytest）
-python -m venv server/.venv
-server\.venv\Scripts\activate
+# 后端：唯一虚拟环境在 server/.venv
+cd server
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+pip install piexif          # 测试用额外依赖（test_jpeg_recompress.py）
 
-# 在虚拟环境中一次性安装依赖
-python -m pip install -r server/requirements.txt
-
-# 运行测试
-python -m pytest tests/ -q
-
-# 启动（默认 :8000）
-cd server && python -m uvicorn main:app --reload
-
-# 验证
-curl http://localhost:8000/api/health
-curl http://localhost:8000/api/constellation/ori
-```
-
-### 前端（Vue3 + Vite）
-
-```bash
-# 安装依赖（已锁定 Node ≥ 20 + pnpm ≥ 11）
+# 前端
 cd web && pnpm install
-
-# 类型检查 + 单测
-pnpm test            # vitest run（15 个用例）
-
-# Dev server（默认 :5173，已配 /api 代理到 :8000）
-pnpm dev
-
-# 生产构建 + 预览
-pnpm build
-pnpm preview         # :4173
 ```
 
-## 4. Mock 模式与对齐 banner
+## 4. 常用命令
 
-- **URL 开关**：`http://localhost:5173/?mock=1` 直接读 `web/public/samples/solve_orion.json`，跳过真实后端。
-- **M1 常驻 banner**：UI 顶部常驻红色 banner「样图模式, 星点对齐官方样图; 换任意照片将在后续版本接入真引擎。」——防止 overlay 漂移被误判为画布 bug。
-- **800ms 模拟延迟**：后端 mock 与前端 mock sleep 都做 800ms，可观察到 uploading 状态的旋转 loading。
+### 后端
 
-## 5. 两份 fixture 的 hash 约束
+```bash
+# 全部测试
+cd server && .venv/Scripts/python.exe -m pytest -q
 
-`server/data/fixtures/solve_orion.json` 与 `web/public/samples/solve_orion.json` 必须保持**字节级一致**：
+# 单个测试文件 / 用例
+cd server && .venv/Scripts/python.exe -m pytest tests/test_jpeg_recompress.py -v
+cd server && .venv/Scripts/python.exe -m pytest tests/test_identify.py::test_oversize_jpeg_is_recompressed_for_upstream -v
 
-```text
-SHA256  EE21DF79BC5A2A1986D9EFD06547BF386288AF5A02A0D49FCACD3FEE6AE08E3D
+# mock 模式启动（跳过真实上游）
+cd server && ASTROMETRY_MOCK=1 .venv/Scripts/python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
+
+# 真实上游启动（默认 http://117.72.38.57:8010）
+cd server && .venv/Scripts/python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
+
+# 健康检查
+curl http://127.0.0.1:8000/api/health
 ```
 
-CI 比 hash 失败时应同步两份。修改其中一份务必同时修改另一份（典型场景是调整 fixture 的 8 颗星坐标或 10 条 overlay_lines）。
+### 前端
 
-## 6. 样图来源
+```bash
+cd web
+pnpm test          # vitest run（278 个用例）
+pnpm dev           # :5173（已配 /api 代理到 :8000）
+pnpm build         # vue-tsc --noEmit + vite build
+pnpm gen:cities    # 重新生成中国城市前缀数据（一次联网，改城市表时才需要）
+```
 
-`web/public/samples/orion.jpg` 是占位图，由 `scripts/make_orion_sample.py` 生成：
+## 5. 配置（环境变量）
 
-- 尺寸：6016×4016（3:2），与 fixture 的 `image_width/image_height` 完全一致。
-- 内容：暗蓝底 + 240 颗随机背景星 + 8 颗 fixture 命中星（白圆点 + 软发光），坐标精确落在 `pixel_x/y` 上。
-- 真实样图替换：将新图保存为 `web/public/samples/orion.jpg` 即可；fixture 像素坐标不变。
+后端启动时自动加载**仓库根目录**的 `.env`（模板见 `.env.example`）。
 
-## 7. 关键技术约束（design spec binding）
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `ASTROMETRY_SERVICE_URL` | `http://117.72.38.57:8010` | 上游解算服务 |
+| `ASTROMETRY_MOCK` | `0` | `=1` 时走 mock，跳过真实上游 |
+| `ASTROMETRY_TIMEOUT` | `60` | 上游解算超时（秒） |
+| `CORS_ORIGINS` | `http://localhost:5173` | 逗号分隔 |
+| `AI_API_BASE` / `AI_MODEL` | DeepSeek 默认 | AI provider（OpenAI 兼容） |
+| `AI_API_KEY` | 空 | 留空则 AI 故事走 preset 降级 |
 
-| 约束 | 当前实现 |
+## 6. 测试现状
+
+| 套件 | 规模 | 状态 |
+|---|---|---|
+| 后端 pytest | 28 个文件 / 265 通过 / 32 deselect | ✅ 全绿 |
+| 前端 vitest | 35 个文件 / 278 个用例 | ✅ 全绿 |
+
+后端 32 个 deselect 是 `test_astro_times.py` 的联网用例：astropy 的 `IERS_Auto`
+需要拉取最新地球自转表，**离线环境下预测值超过 30 天会直接抛
+`ValueError: interpolating from IERS_Auto using predictive values that are more than 30.0 days old`**。
+这不是代码缺陷，联网后自动恢复。
+
+## 7. 关键技术约束
+
+| 约束 | 说明 |
 |---|---|
-| 错误统一格式 `{ ok, code?, message?, advice? }` | ✓ 成功体含 `ok:true`，失败体含 `code` |
-| Bayer 字符串冻结 `Latin + 空格 + IAU` | ✓ 严格 `Alpha Ori` 风格，大小写敏感 |
-| 后端超时 60s / 前端 65s / M1 mock 800ms | ✓ 三档独立配置 |
-| 单源：`server/data/constellations.json` → `web/src/data/` | ✓ Vite plugin 在 dev + build 都同步 |
-| M1 全程 mock + 常驻 banner | ✓ 不只在 `?mock=1` |
-| 客户端拦截 JPG/PNG + 20MB | ✓ 拦截不发请求 + toast |
-| 404 用 HTTP 404（不是 200 + ok:false） | ✓ `JSONResponse(status_code=404)` |
-| overlay 连线 `lineTo`（非 `moveTo`） | ✓ StarCanvas 已用 `lineTo`，测试断言 |
+| **公网 4MB 上限** | 上游 `≤4MB` 成功、`≥5MB` 失败（HTTP 400）。由 `services/jpeg_recompress.py` 服务端保障：PIL libjpeg 自适应降级 `[q90, q85, q80]`，不 resize、保留 EXIF。**不要在 web 端压缩 JPEG**（见下） |
+| **EXIF Orientation** | 上游按 raw bytes 解算，浏览器 `<img>` 却按 EXIF 转正显示。前端读 Orientation 随 FormData 上传，后端 `_apply_exif_orientation` 变换坐标，orientation 5/6/7/8 时宽高对调 |
+| **不要在 web 端压 JPEG** | canvas Skia / mozjpeg-wasm 与 native libjpeg 在 chroma quantization 与 DCT 实现上有像素差异。相机长焦大图即便 EXIF 完整保留，上游 source extractor 仍会拒绝（实测 canvas q80–q95 全失败，libjpeg q70–q95 全成功） |
+| **解算耗时与文件大小无关** | 由视场 + 星点密度决定。窄视场长焦图索引搜索更细分子库，仍需 ~20s |
+| **fixture 双份字节一致** | `server/data/fixtures/solve_orion.json` 与 `web/public/samples/solve_orion.json` 必须保持同一 SHA256：`EE21DF79BC5A2A1986D9EFD06547BF386288AF5A02A0D49FCACD3FEE6AE08E3D`（已核对一致）。改一份必须同步另一份 |
+| **样图速测素材** | `web/public/samples/quick-test*.jpg` 由 `scripts/prepare_quick_samples.py` 生成，**直接 import 服务端生产函数** `recompress_jpeg_to_target`，与用户上传路径产物等价，不存在样图专用后门。改动素材后必须重跑该脚本，否则 `web/tests/quickSamples.test.ts` 会红 |
+| **tradition 启动加载** | 星表在 startup 载入，损坏 JSON 不重试（log 提示需重启） |
 
-## 8. M2 路线图
-
-- **真实求解接入**：实现 `services/astrometry.py` 策略层（analyse → scale hint → race/crop → 失败映射）。
-- **WCS 像素坐标**：用 astropy 的 `world2pix`（含 SIP 校正）从 WCS 头推出 stars_overlay 的 pixel_x/y。
-- **完整超时/并发**：服务端 60s timeout + 全局信号量 ≤3 + 超额 HTTP 429。
-- **真实样图**：替换占位 `orion.jpg` 为真实拍摄；坐标按真实解算结果回归（误差 < 2px）。
-- **观星指数**（Open-Meteo + Bortle + 月相）+ **AI 故事**（OpenAI 兼容 provider）+ **星座图鉴**完整页。
-- **HEIC 支持 / EXIF 方向**：尽早接入。
-
-## 9. 评分对照
+## 8. 评分对照
 
 | 评分项 | 体现 |
 |---|---|
-| 创新易用 | 「识别 + 动效 + AI 叙事」三合一差异化闭环 |
-| 商业前景 | 轻量低成本、单机可运营、可插件化科普内容 |
-| 技术架构 | OPC 轻量化：Vue3 + FastAPI + Conda 一人维护；M1 mock 完整闭环 |
-| 功能完备 | 主链路 mock 全通；统一错误格式 + 6 态 + 客户端拦截 |
+| 创新易用 | 「识别 + 动效 + AI 叙事」三合一闭环，拍张照即可得到可读的天空故事 |
+| 商业前景 | 轻量低成本、单机可运营、可插件化科普内容（见 `docs/business/`） |
+| 技术架构 | Vue3 + FastAPI + astropy，一人可维护；真实上游解算 + 多 tradition 星表 |
+| 功能完备 | 统一错误格式、6 态上传、样图速测、观星指数、星图鉴、AI 故事双风格 |
 | 码道深度应用 | 全程 AI 辅助开发，提交 IDE 日志与使用痕迹 |
