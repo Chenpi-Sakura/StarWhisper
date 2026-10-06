@@ -69,6 +69,16 @@ if ! git diff --quiet HEAD 2>/dev/null; then
 fi
 [[ -f .env ]] || fail ".env 不存在（ASTROMETRY_SERVICE_URL 等配置丢失）"
 
+# 外部依赖体检：识图主链路依赖自建 astrometry 求解服务（不在本仓库，见 docs/EXTERNAL_DEPS.md）。
+# 这里必须 fail 而不是 warn —— 依赖不通还把 StarWhisper 部上去，等于交付一个
+# "页面能开、拍照没反应" 的版本，用户侧才发现，比部署失败难查得多。
+echo "▶ 外部依赖体检"
+if ! bash scripts/check_deps.sh --quiet; then
+    echo
+    fail "外部依赖未就绪（识图会 502 ASTROMETRY_DOWN）。完整报告：bash scripts/check_deps.sh"
+fi
+info "外部依赖就绪"
+
 # ---- 1. 拉取 main ----
 echo "▶ git pull origin main"
 if ! git pull --ff-only origin main; then
@@ -157,6 +167,31 @@ if [[ "$PREVIEW_CODE" == "200" ]]; then
     info "前端 preview: HTTP 200"
 else
     fail "前端 preview 失败: HTTP $PREVIEW_CODE（查看 tmux attach -t $PREVIEW_SESSION）"
+fi
+
+# 识图链路真打一次：/api/health 的 astrometry 字段只看配置、不探测上游，
+# 所以 health 通过 ≠ 解算可用。这里用仓库自带样图真解一次（见 docs/EXTERNAL_DEPS.md §3）。
+# quick-test1.jpg 在 web/public/samples/ 里，克隆即有，实测可解出（D610+50mm，视场 39.9°×26.7°）。
+PROBE_IMG="$REPO/web/public/samples/quick-test1.jpg"
+if [[ -f "$PROBE_IMG" ]]; then
+    SOLVE_CODE=$(curl -s -m 180 -o /tmp/sw_solve_probe.json -w "%{http_code}" \
+        -X POST -F "image=@$PROBE_IMG" \
+        http://127.0.0.1:8000/api/identify/solve 2>/dev/null || echo "0")
+    if [[ "$SOLVE_CODE" != "200" ]]; then
+        warn "识图探测返回 HTTP $SOLVE_CODE（这通常意味着解算服务不可达，见 docs/EXTERNAL_DEPS.md）"
+    elif python3 -c "
+import json,sys
+try:
+    sys.exit(0 if json.load(open('/tmp/sw_solve_probe.json')).get('solved') else 1)
+except Exception:
+    sys.exit(1)
+" 2>/dev/null; then
+        info "识图链路真解通过（solved=true）"
+    else
+        warn "识图链路未解出（服务通但没解出星：多为视场超索引范围或样图不合适，不阻断部署）"
+    fi
+else
+    warn "缺少探测样图 $PROBE_IMG，跳过识图链路探测"
 fi
 
 # ---- 7. 完成 ----

@@ -12,6 +12,53 @@ StarWhisper（星语天象）—— 拍照识星座 + 星座动起来 + AI 讲�
 
 ---
 
+## 外部服务依赖（硬依赖，先读这段）
+
+**StarWhisper 无法独立运行。** 识图主链路（`POST /api/identify/solve`）必须有一个自建的 astrometry 求解服务在线，它**不在本仓库内**，是另外两个仓库：
+
+```
+StarWhisper (:8000)
+    └─ HTTP → astrometry-api-server (:8010)     /root/Projects/astrometry/astrometry-api-server
+                 └─ go.mod replace → astrometry-go-client   /root/Projects/astrometry/astrometry-go-client
+                          └─ exec solve-field → astrometry.net 0.98 + 4100 索引（12 个，339M）
+```
+
+| 仓库 | 地址 |
+|---|---|
+| astrometry-api-server | `git@gitcode.com:chenpi_1/astrometry-api-server.git` |
+| astrometry-go-client | `git@gitcode.com:chenpi_1/astrometry-go-client.git` |
+
+两个仓库必须**同级放置**（server 的 `go.mod` 用相对路径 `replace => ../astrometry-go-client`）。
+
+**⚠️ 关键事实：`GET /api/health` 的 `astrometry` 字段只看配置**（`ASTROMETRY_MOCK` 真假），
+**不探测上游真实连通性**（见 `server/routers/health.py` 的 docstring）。
+解算服务全挂时 StarWhisper 依然返回 `ok: true, astrometry: up`。**别拿它判断依赖死活。**
+
+判断依赖是否真的可用，用体检脚本：
+
+```bash
+bash scripts/check_deps.sh          # 识图依赖缺任一项 → exit 1
+bash scripts/check_deps.sh --quiet  # 只报失败项
+```
+
+它会真探测：服务通不通、跑的是哪份 commit、解算器是不是 0.98（**不是 apt 的 0.93**）、
+索引齐不齐、tmux 托管是否还在。`scripts/deploy.sh` 的预检会调它，**依赖不通直接中止部署**。
+
+启停解算服务（不在本仓库）：
+
+```bash
+cd /root/Projects/astrometry
+./astrom_service.sh status    # 状态
+./astrom_service.sh deploy    # 改了解算服务代码后：测试 → 编译 → 重启
+./astrom_service.sh verify    # 完整健康检查 + 端到端冒烟解算
+```
+
+> 2026-10-06 变更：解算服务已**彻底去 Docker 化**（解算器 0.98 直接跑在宿主机 `/opt/astrometry/0.98/`，
+> 进程由 tmux 会话 `astrometry-api` 托管），路径也从 `/root/service/` 迁到了 `/root/Projects/astrometry/`。
+> 详见 `docs/EXTERNAL_DEPS.md` 与 `/root/Projects/astrometry/docs/README.md`。
+
+---
+
 ## 仓库布局
 
 ```
@@ -272,6 +319,7 @@ curl -s -X POST -F "image=@assets/test1.jpg" http://127.0.0.1:8000/api/identify/
 | 文档 | 何时读 |
 |---|---|
 | `docs/API.md` | 改 identify / 上游调用 / 4MB 约束时 |
+| `docs/EXTERNAL_DEPS.md` | 改依赖部署形态 / 解算服务不可用 / 换机器时（先读）|
 | `docs/specs/2026-08-21-starwhisper-design.md` | 整体产品设计 |
 | `docs/specs/2026-08-23-starwhisper-design-m2.md` | M2 增量设计 |
 | `docs/specs/2026-08-25-atlas-tradition-design.md` | tradition 多源星表设计 |

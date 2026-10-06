@@ -23,6 +23,10 @@ StarWhisper 让用户拍下的星空"开口说话"——上传一张星空照片
 
 版本控制只跟踪**代码、测试与文档**。比赛交付物料、PPT 工程、工具索引一律不入库。
 
+> ⚠️ **本项目不能独立运行**：识图主链路依赖一个自建的 astrometry 求解服务（另外两个仓库，
+> 默认在 `/root/Projects/astrometry/`）。服务不通时 `POST /api/identify/solve` 返回 **502**。
+> 部署前先体检：`bash scripts/check_deps.sh`。详见 [`docs/EXTERNAL_DEPS.md`](docs/EXTERNAL_DEPS.md)。
+
 ```
 server/                       FastAPI 后端（Python 3.11+，pytest）
 ├── main.py                   入口；routers + CORS + traditions 启动加载
