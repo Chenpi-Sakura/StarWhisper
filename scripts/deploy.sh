@@ -44,13 +44,17 @@ fail()  { echo -e "${C_RED}[✗]${C_RESET} $*" >&2; exit 1; }
 kill_port_owners() {
     local port="$1"
     local pids
-    pids=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K[0-9]+' | sort -u)
+    # ⚠️ || true 不能省：本脚本第 15 行是 `set -euo pipefail`，端口已释放时
+    #    grep 无匹配返回 1，pipefail 会把整个管道判失败，赋值语句非 0 触发 set-e
+    #    让**整个脚本在函数内部静默退出**——实测会让 kill 之后的新进程根本没
+    #    起来，端口空窗、线上 502，而退出码被下游管道掩盖成 0。
+    pids=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K[0-9]+' | sort -u || true)
     [[ -z "$pids" ]] && return 0
     warn "端口 $port 仍被占用（tmux 外的孤儿进程），清理: $pids"
     kill -TERM $pids 2>/dev/null || true
     for _ in 1 2 3 4; do
         sleep 1
-        pids=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K[0-9]+' | sort -u)
+        pids=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K[0-9]+' | sort -u || true)
         [[ -z "$pids" ]] && { info "端口 $port 已释放"; return 0; }
     done
     warn "端口 $port 仍占用，SIGKILL: $pids"
