@@ -127,11 +127,20 @@ export interface PhotoField {
   height_deg: number
 }
 
+/** EXIF 摘要（前端归一化后随故事 context 上送）。刻意不含经纬度原值。 */
+export interface PhotoCapture {
+  /** `YYYY-MM-DD HH:MM` */
+  captured_at?: string
+  /** 区县级地名链，如 `四川省成都市锦江区` */
+  place?: string
+}
+
 export interface PhotoStoryContext {
   constellations: PhotoConstellation[]
   bright_stars?: PhotoStar[]
   center?: PhotoCenter
   field?: PhotoField
+  capture?: PhotoCapture
 }
 
 export interface PhotoStoryRequest {
@@ -146,6 +155,30 @@ export interface PhotoStoryRequest {
  * `code`（AI_DISABLED / AI_TIMEOUT / ...），且不发 `reset`（photo 无 preset 降级）。
  */
 export type PhotoErrorEvent = { type: 'error'; code: string; message: string }
+
+/** 星纹配图：异步 job 的两段协议（POST 起任务 → GET 轮询取图）。 */
+export type ArtworkStatus = 'pending' | 'ready' | 'error'
+
+export interface ArtworkStartResponse {
+  ok: boolean
+  job_id: string
+  status: ArtworkStatus
+  cached: boolean
+  model: string
+}
+
+export interface ArtworkPollResponse {
+  ok: boolean
+  job_id: string
+  status: ArtworkStatus
+  model: string
+  cached: boolean
+  /** 上游给的是 24 小时过期的签名 URL，只适合当场看/当场存 */
+  images: string[]
+  latency_ms?: number
+  error_code?: string
+  error_message?: string
+}
 
 export interface HealthResponse {
   ok: boolean

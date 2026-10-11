@@ -19,7 +19,7 @@ vi.mock('../src/api/solve', () => ({
 
 const readExifMock = vi.fn()
 vi.mock('../src/utils/exif', () => ({
-  readExifOrientation: (...a: unknown[]) => readExifMock(...a),
+  readExifMeta: (...a: unknown[]) => readExifMock(...a),
 }))
 
 const isHeicMock = vi.fn()
@@ -42,6 +42,16 @@ vi.mock('../src/api/story', () => ({
   STORY_STREAM_TIMEOUT_MS: 60_000,
 }))
 
+// ArtworkPanel 会在故事流跑完后自动起 job。这里让 POST/轮询永不 resolve，
+// 由测试自己把 artwork store 拨到 ready，来验证「配图铺成整页底纹」。
+vi.mock('../src/api/artwork', () => ({
+  ARTWORK_DEADLINE_MS: 180_000,
+  ARTWORK_POLL_INTERVAL_MS: 2_000,
+  ArtworkApiError: class extends Error {},
+  startArtwork: () => new Promise(() => {}),
+  pollArtwork: () => new Promise(() => {}),
+}))
+
 beforeEach(() => {
   setActivePinia(createPinia())
   listConstellationsMock.mockReset()
@@ -51,9 +61,9 @@ beforeEach(() => {
   isHeicMock.mockReset()
   streamStoryMock.mockClear()
   postStoryMock.mockClear()
-  // 默认 mock：HEIC 检测返回 false，EXIF 默认方向 1
+  // 默认 mock：HEIC 检测返回 false，EXIF 只有方向 1（无时间 / 无 GPS）
   isHeicMock.mockResolvedValue(false)
-  readExifMock.mockResolvedValue(1)
+  readExifMock.mockResolvedValue({ orientation: 1 })
 })
 
 function makeJpegFile(name = 'test.jpg', size = 1024): File {
@@ -763,5 +773,53 @@ describe('ScanView 样图速测', () => {
     expect(
       wrapper.find('[data-testid="sample-card-test1"]').attributes('disabled'),
     ).toBeUndefined()
+  })
+})
+
+describe('ScanView 星纹透光（托盘纸底半透）', () => {
+  async function toDone() {
+    solveImageMock.mockResolvedValue(SAMPLE_RESULT)
+    getConstellationMock.mockResolvedValue(SAMPLE_ATLAS)
+    const ScanView = (await import('../src/views/ScanView.vue')).default
+    const wrapper = mount(ScanView)
+    const { useScanStore } = await import('../src/stores/scan')
+    const s = useScanStore()
+    s.selectImage(makeJpegFile())
+    await flushPromises()
+    await s.solve(true)
+    await flushPromises()
+    return wrapper
+  }
+
+  it('未出图时根节点不带 has-art，出图后带上（页面底层的 .bg-art 由 App.vue 挂）', async () => {
+    const wrapper = await toDone()
+    expect(wrapper.find('.scan-view').classes()).not.toContain('has-art')
+
+    const { useArtworkStore } = await import('../src/stores/artwork')
+    const art = useArtworkStore()
+    art.images = ['https://img/a.jpg']
+    art.phase = 'ready'
+    await flushPromises()
+
+    expect(wrapper.find('.scan-view').classes()).toContain('has-art')
+  })
+
+  it('has-art 翻转后 plate 仍保留入场动画的 go 类（回归：整块图版曾因此 opacity 归 0）', async () => {
+    const wrapper = await toDone()
+
+    const plate = wrapper.find('.plate')
+    expect(plate.classes()).toContain('go')
+
+    const { useArtworkStore } = await import('../src/stores/artwork')
+    const art = useArtworkStore()
+    art.images = ['https://img/a.jpg']
+    art.phase = 'ready'
+    await flushPromises()
+
+    // 响应式 class 只能绑在 ScanView 自己的根 div 上；绑到 PlateBox 会被 Vue
+    // 重写 className 时抹掉它 onMounted 手加的 go，图版整块消失。
+    expect(wrapper.find('.scan-view').classes()).toContain('has-art')
+    expect(plate.classes()).toContain('anim')
+    expect(plate.classes()).toContain('go')
   })
 })

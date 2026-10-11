@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 from threading import Lock
 from typing import AsyncIterator
@@ -27,7 +28,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
-from config import STORY_TOTAL_TIMEOUT
+from config import STORY_PROMPT_MAX_STARS, STORY_TOTAL_TIMEOUT
 from services.ai_provider import make_provider
 from services.photo_story import _build_user_content, _signature
 from services.story_throttle import check_rate_limit, get_circuit
@@ -75,11 +76,47 @@ class _PhotoField(BaseModel):
     height_deg: float
 
 
+_CAPTURE_TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$")
+_PLACE_MAX_LEN = 64
+
+
+class _PhotoCapture(BaseModel):
+    """EXIF 摘要（拍摄时刻 + 区县级地名）。
+
+    这是客户端可控、且会被拼进 LLM prompt 的字段，故只放行固定形态；
+    不合规则**丢弃**而非 422——一张 EXIF 畸形的照片不该让整个故事失败。
+    坐标不在此字段内（前端已反查成区县级地名，原始经纬度不出浏览器）。
+    """
+
+    captured_at: str | None = None
+    place: str | None = None
+
+    @field_validator("captured_at")
+    @classmethod
+    def _ts_shape(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        return v if _CAPTURE_TS_RE.match(v) else None
+
+    @field_validator("place")
+    @classmethod
+    def _place_shape(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        # isprintable() 已排除换行/制表等控制符，防多行注入 prompt
+        if not v or len(v) > _PLACE_MAX_LEN or not v.isprintable():
+            return None
+        return v
+
+
 class _PhotoContext(BaseModel):
     constellations: list[_PhotoConstellation]
     bright_stars: list[_PhotoStar] = Field(default_factory=list)
     center: _PhotoCenter | None = None
     field: _PhotoField | None = None
+    capture: _PhotoCapture | None = None
 
 
 class PhotoStoryRequest(BaseModel):
@@ -239,6 +276,7 @@ async def _events(body: PhotoStoryRequest, key: str) -> AsyncIterator[str]:
 
     user_content = _build_user_content(
         body.context.model_dump(mode="json"), body.style, body.lang,
+        max_stars=STORY_PROMPT_MAX_STARS,
     )
 
     title_emitted = False

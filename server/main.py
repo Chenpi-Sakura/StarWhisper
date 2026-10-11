@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 
 from config import CORS_ORIGINS
 from routers import (
+    artwork,
     atlas_nota,
     atlas_story,
     constellation,
@@ -50,6 +51,7 @@ app.include_router(constellations.router)
 app.include_router(story.router)
 app.include_router(atlas_story.router)
 app.include_router(atlas_nota.router)
+app.include_router(artwork.router)
 app.include_router(health.router)
 app.include_router(traditions.router)
 app.include_router(index.router)

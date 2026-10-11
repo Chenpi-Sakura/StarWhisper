@@ -21,6 +21,7 @@ server/                  FastAPI + Python 3.11+ + pytest
   routers/               路由层（HTTP 边界）
     identify.py          POST /api/identify/solve（核心：JPEG 重压 + 上游解算 + 失败映射）
     story.py             AI 故事流式接口
+    artwork.py           POST /api/artwork（起 job）+ GET /api/artwork/{id}（轮询）
     traditions.py        /api/traditions 多 tradition 数据
     health.py            /api/health（astrometry + ai_provider 状态）
     constellation.py     /api/constellation/{abbr}
@@ -33,6 +34,8 @@ server/                  FastAPI + Python 3.11+ + pytest
     story_fallback.py    AI 不可用时的离线预设（按 tradition 取 traditions 内嵌 brief）
     constellation.py     星座详情
     weather.py           Open-Meteo 观星指数四档（优/良/一般/差）
+    image_prompt.py      星纹 prompt 模板（定稿结构：故事在前、规则在后）
+    image_gen.py         MiniMax 文生图 client + 进程内 job 表（闸门/熔断/缓存/mock）
   data/                  traditions/{western,chinese}/<abbr>.json + fixtures
   tests/                 pytest（214 个用例：identify + jpeg_recompress + traditions
                          + story + index/astro 时刻 — story 覆盖 P0/P1/P2 全部修复路径）
@@ -42,8 +45,10 @@ web/                     Vue 3 + Vite + TS + Pinia + vitest + jsdom
   public/data/           运行时按需 fetch 的静态数据（cn-cities.json：3237 条省/市/区县前缀表）
   src/
     stores/              scan / atlas / story（fetchStoryStream 真 SSE）/ stargaze / toast
+                         / artwork（星纹 job 轮询状态机）
     views/               ScanView / ConstellationView / IndexView（观星指数）
-    components/          StarCanvas（overlay + atlas 三模式）/ StoryPanel / SampleStrip（样图速测）
+    components/          StarCanvas（overlay + atlas 三模式）/ StoryPanel / ArtworkPanel
+                         / SampleStrip（样图速测）
                          / AtlasStoryStatic / AtlasTraditionTabs
                          / index（IndexGauge/TrendBars/MoonCard/CitySearch）
                          / common（PlateBox/StarBtn/StarChip）
@@ -148,7 +153,12 @@ pnpm build               # vue-tsc --noEmit + vite build
 ### AI 故事流
 
 **photo-level 故事（ScanView）**：
-- `POST /api/story`：接 photo-level context（constellations[] + bright_stars[] + center + field）
+- `POST /api/story`：接 photo-level context（constellations[] + bright_stars[] + center + field + capture）
+- `bright_stars` 与 atlas 路径一样受 `STORY_PROMPT_MAX_STARS` 截断（按星等取最亮 N 颗）。
+  漏截断时实测 79°×59° 广域图会把 1709 颗星全塞进 prompt（user_content 174KB → 截断后 1.8KB）
+- `capture` 来自前端 EXIF：`captured_at`（`YYYY-MM-DD HH:MM`）+ `place`（区县级地名）。
+  原始经纬度**不出浏览器**——`utils/place.ts` 用 cn-cities.json 反查成地名才进 prompt；
+  后端 `_PhotoCapture` 对两个字段做形态白名单，不合规即丢弃（不 422）
 - 触发：scanStore.solveId 变化（每次新解算自动讲一次）
 - 切 chip（activeAbbr）不影响 story
 - 风格：myth / science（user content 携带 style，单一 AgentArts prompt）
@@ -162,6 +172,58 @@ pnpm build               # vue-tsc --noEmit + vite build
 - 风格：myth / science
 - 保留 preset degraded fallback（atlas 体验需要降级兜底）
 - 缓存：`(tradition, abbr, style)` 三维，TTL 10min
+
+### 星纹配图（AI 文生图）
+
+`POST /api/artwork` 接故事正文 → 立即返回 `job_id`；`GET /api/artwork/{id}` 轮询到
+`ready/error`。**必须走 job 而不是同步返回**：MiniMax `/v1/image_generation` 是同步
+接口且没有异步任务查询端点，实测单次 32–38s，挂在 HTTP 上会占住 worker 几十秒，
+连带拖慢故事与观星指数（单机只有一个事件循环）。触发点在 `ArtworkPanel.vue`：
+故事流跑完才发起（prompt 的内容就是这段故事），指纹去重避免重复烧钱。
+
+三条不可回退的事实（都是实测出来的）：
+
+1. **图生图这条路不存在。** `subject_reference[].type` 只有 `character`（人像）一个取值，
+   语义是「身份注入」而非「图像改写」，没有 strength/denoise 任何权重参数。实测把真实
+   星空照当参考喂进去，输出星位全变；同 seed 加/不加参考的平均像素差仅 5.43/255，
+   低于两次随机生成之间 11.9 的一半。所以「把用户这张照片变生动」用这个接口做不到。
+2. **prompt 结构是五臂对照实验选出来的**（见 `services/image_prompt.py` 模块注释）：
+   故事正文放最前、【画风】/【画面性质】/【严禁】压在后。模型对最后读到的内容权重最高，
+   而故事点名十几个星名会持续把画面拽向「带标注的星图」。正面表述是**加法**，删掉禁令
+   会让连线更多。
+3. **方差是固有属性，靠拒绝采样而不是调措辞解决。** 最优臂单张干净率实测约 1/4，
+   所以 `IMAGE_GEN_N=4` 一次出多张让用户挑（¥0.025/张，至少一张干净 ≈ 99%）。
+4. **`n` 不影响耗时，但分辨率影响。** 同 prompt 实测 n=1 三次 32.8/33.6/32.6s，
+   n=4 三次 32.9/34.3/61.0s——上游内部并行出图，约 33s 是固定往返。**不要**为了
+   "省时间"把 n 调小，那是纯亏（时间不变、命中率从 99% 掉回 25%）。耗时跟**像素数**
+   走：1024² ≈33s、1280×720 ≈20s、1920×1080 ≈35s。
+5. **出图尺寸默认 1920×1080，不是 `aspect_ratio` 预设。** `aspect_ratio=16:9` 上游只给
+   1280×720，铺成整页底纹会发糊；`image-01` 支持显式 `width`/`height`（[512,2048] 且 8
+   的倍数），1920×1080 与旧的 1024×1024 耗时持平而像素翻倍。`IMAGE_GEN_WIDTH/HEIGHT`
+   任一为 0 才退回 `IMAGE_GEN_ASPECT`。曾硬编码 `aspect_ratio: "1:1"`，铺满页面后观感
+   很差，`test_image_gen.py` 里有回归断言。
+6. **上游 1026（内容审核）是偶发误判，不是文本的确定属性。** 一条完全干净的七夕
+   故事（织女牛郎鹊桥）被拒，同一条 prompt 重打 10 次全部通过。因此
+   `IMAGE_UNSAFE_CONTENT` 在 `image_gen._run()` 里：不计入熔断失败次数（它不是服务
+   故障，否则连来三个敏感故事会让全站图片"暂时不可用" 60s），并静默重投一次。
+   上游 `status_msg`（会点名被拒措辞）只进服务端日志，不进给前端的 message。
+
+**星纹铺底的层级**：配图不画在图版内部，而是 `App.vue` 里 `.bg-art` 这一层
+（`position: fixed; z-index: 0`，与 `.bg-atlas` 同层、DOM 在其后，故压在星图水印之上、
+`.frame`(z 1) / `.masthead`(z 50) 之下），托盘浮在它上面。因此 `.scan-view.has-art
+:deep(.plate)` 要把纸底从 `--paper-hi` 改成 `rgba(244,236,212,0.8)`——0.62 时黑夜空
+会把托盘压成灰泥。底图用 `multiply` + `brightness(2.05)`：不先提亮，大片近黑的夜空
+会把整页压暗到不可读。
+
+**给 PlateBox 绑响应式 `:class` 会让整块图版消失。** `PlateBox` 在 `onMounted` 里
+`root.classList.add('go')` 手动加类跑入场动画（`.anim{opacity:0}` → `.anim.go` 才可见）。
+父组件若在它身上绑响应式 class，Vue 重写 `className` 时会把 `go` 抹掉，`opacity` 回到 0，
+表现是"内容全没了但 DOM 还在"。响应式 class 只能绑在调用方自己的根元素上。
+`tests/ScanView.test.ts` 里有这条回归测试。
+
+另外：上游返回的是 **24 小时过期**的签名 URL，只能当场看/当场存，不能入库当素材地址；
+画面不烧 `aigc_watermark`，改由 UI 固定标注「艺术演绎 · AI 生成，非科学星图」——
+生成图必须与真实 overlay 视觉隔离，这是「知识准确性第一原则」的一部分。
 
 ---
 

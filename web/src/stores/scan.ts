@@ -2,7 +2,9 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { isAbortError, isTimeoutError, solveImage } from '../api/solve'
-import { readExifOrientation } from '../utils/exif'
+import { readExifMeta, type ExifMeta } from '../utils/exif'
+import { buildCapture, type PhotoCapture } from '../utils/capture'
+import { loadCityIndex } from '../utils/cityTrie'
 import { useToastStore } from './toast'
 import type { SolveResult, StoryStyle } from '../types'
 
@@ -44,6 +46,9 @@ export const useScanStore = defineStore('scan', () => {
   /** photo-level 故事触发键——每次 solve 成功生成新 uuid，StoryPanel watch 它触发 fetchPhotoStory。
    *  切 chip / 切 style 都不刷新此键，故不触发新故事。 */
   const solveId = ref<string | null>(null)
+  /** EXIF 摘要（拍摄时刻 + 区县级地名），随故事 context 一起发给后端。
+   *  原始经纬度在 buildCapture 里就被换成地名了，这个对象不含坐标。 */
+  const capture = ref<PhotoCapture>({})
   const loading = computed(() => status.value === 'uploading')
 
   let abortController: AbortController | null = null
@@ -52,6 +57,17 @@ export const useScanStore = defineStore('scan', () => {
 
   function setLockedTradition(t: string): void {
     lockedTradition.value = t
+  }
+
+  /** GPS → 区县级地名要拉城市表；任何失败都只降级成「没有地名」，绝不影响解算结果。 */
+  async function resolveCapture(meta: ExifMeta): Promise<PhotoCapture> {
+    const hasGps = meta.lat !== undefined && meta.lon !== undefined
+    try {
+      const rows = hasGps ? (await loadCityIndex()).rows : []
+      return buildCapture(meta, rows)
+    } catch {
+      return buildCapture(meta, [])
+    }
   }
 
   function selectImage(file: File): void {
@@ -71,6 +87,7 @@ export const useScanStore = defineStore('scan', () => {
     activeAbbr.value = null
     errorCode.value = null
     errorMessage.value = null
+    capture.value = {}
   }
 
   async function solve(mock = false): Promise<void> {
@@ -103,13 +120,15 @@ export const useScanStore = defineStore('scan', () => {
     const uploadFile: File = imageFile.value
 
     try {
-      const exifOrientation = await readExifOrientation(uploadFile)
+      const meta = await readExifMeta(uploadFile)
       const data = await solveImage(uploadFile, {
         mock,
         signal: abortController.signal,
-        exifOrientation,
+        exifOrientation: meta.orientation,
       })
       result.value = data
+      // 解算已返回，此处补 EXIF 摘要；必须在 solveId 之前就绪，故事才拿得到
+      capture.value = await resolveCapture(meta)
       if (!data.ok || !data.solved) {
         status.value = 'error'
         errorCode.value = data.code ?? 'UNKNOWN'
@@ -170,6 +189,7 @@ export const useScanStore = defineStore('scan', () => {
     activeAbbr.value = null
     errorCode.value = null
     errorMessage.value = null
+    capture.value = {}
   }
 
   return {
@@ -183,6 +203,7 @@ export const useScanStore = defineStore('scan', () => {
     selectedStyle,
     lockedTradition,
     solveId,
+    capture,
     loading,
     selectImage,
     solve,

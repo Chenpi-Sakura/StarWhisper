@@ -3,10 +3,12 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { useScanStore } from '../stores/scan'
 import { useAtlasStore } from '../stores/atlas'
+import { useArtworkStore } from '../stores/artwork'
 import { useToastStore } from '../stores/toast'
 import { isHeic } from '../utils/heic'
 import StarCanvas from '../components/StarCanvas.vue'
 import StoryPanel from '../components/StoryPanel.vue'
+import ArtworkPanel from '../components/ArtworkPanel.vue'
 import SampleStrip from '../components/SampleStrip.vue'
 import PlateBox from '../components/common/PlateBox.vue'
 import StarBtn from '../components/common/StarBtn.vue'
@@ -16,6 +18,7 @@ import type { ConstellationAtlas } from '../types'
 
 const scan = useScanStore()
 const atlasStore = useAtlasStore()
+const art = useArtworkStore()
 const toast = useToastStore()
 
 const isMock = new URLSearchParams(window.location.search).has('mock')
@@ -42,6 +45,10 @@ function onStageImgLoad(e: Event) {
       ? img.naturalWidth / img.naturalHeight
       : null
 }
+
+/* 星纹配图铺成整页底纹：图单独占一格时太不起眼，故事读起来没有"被画包围"的感觉。
+   用 multiply + 低透明度压成墨痕，随候选缩略图切换而变。 */
+const artWash = computed(() => (art.phase === 'ready' ? art.current : null))
 
 let isMounted = true
 let ssRaf = 0
@@ -361,7 +368,7 @@ watch(
 </script>
 
 <template>
-  <div class="scan-view">
+  <div class="scan-view" :class="{ 'has-art': !!artWash }">
     <!-- 上传前的 idle 提示：单独 plate -->
     <PlateBox
       v-if="scan.status === 'idle'"
@@ -576,6 +583,13 @@ watch(
               />
             </PlateBox>
           </div>
+
+          <!-- 星纹（故事配图：AI 文生图，异步 job 轮询，见 components/ArtworkPanel.vue） -->
+          <div v-if="showStory" class="artwork-inline">
+            <PlateBox plate="ART" caption="星纹 · 故事配图">
+              <ArtworkPanel />
+            </PlateBox>
+          </div>
         </div>
       </div>
     </PlateBox>
@@ -643,6 +657,18 @@ watch(
 .scan-view :deep(.plate-body) {
   display: flex;
   flex-direction: column;
+}
+
+/* ===== 星纹透到托盘底下 =====
+   配图铺在页面最底层（见 App.vue 的 .bg-art），托盘浮在它上面，所以托盘纸底不能是
+   不透明的 --paper-hi。这里用接近中性的白而不是奶油色 rgba(244,236,212)：托盘是半透
+   镜，用什么颜色罩，透过来的画就染什么色——配图本身已是淡黄，再罩一层奶油就黄上加黄。
+
+   has-art 这个响应式 class 绑在 ScanView 自己的根 div 上，绝不绑 PlateBox：
+   PlateBox 是 onMounted 里 classList.add('go') 手动加类跑入场动画的，Vue 一旦
+   重写 className 就把 go 抹掉，.anim{opacity:0} 重新生效，整块图版直接消失。 */
+.scan-view.has-art :deep(.plate) {
+  background: rgba(250, 247, 240, 0.62);
 }
 
 .scan-grid {
@@ -875,6 +901,28 @@ watch(
   flex-direction: column;
 }
 .story-inline :deep(.story-panel) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* artwork-inline：与 story-inline 同一套嵌套 plate 契约，保证移动端折叠一致 */
+.artwork-inline {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+}
+.artwork-inline :deep(.plate) {
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+.artwork-inline :deep(.plate-body) {
+  display: flex;
+  flex-direction: column;
+}
+.artwork-inline :deep(.artwork-panel) {
   flex: 1;
   min-height: 0;
   display: flex;

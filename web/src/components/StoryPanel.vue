@@ -56,6 +56,8 @@ function buildContext(): PhotoStoryContext | null {
     field: r.field_width != null && r.field_height != null
       ? { width_deg: r.field_width, height_deg: r.field_height }
       : undefined,
+    // EXIF 摘要：只有拍摄时刻 / 区县级地名，无原始坐标（见 utils/capture.ts）
+    capture: scan.capture.captured_at || scan.capture.place ? scan.capture : undefined,
   }
 }
 
