@@ -58,7 +58,7 @@ async function tryOrion() {
       <div class="frame" style="padding-bottom: 0">
         <div class="mast-top">
           <div class="brand">
-            <div class="zh">星<b>✶</b>语</div>
+            <div class="zh">聆<b>✶</b>宇</div>
             <div class="en">STARWHISPER · ATLAS COELESTIS</div>
           </div>
           <div class="mast-side right">
